@@ -11,3 +11,4 @@
   - 음수/0/문자열 등 잘못된 입력에 대한 친절한 예외 메시지 제공.
   - Ctrl+C(KeyboardInterrupt) 안전 종료 처리.
 - [x] **파일 반영**: 새 파일을 생성하지 않고 기존 파일(`gugudan.py` 및 `src/gugudan.py`)에 직접 반영.
+

@@ -1,4 +1,3 @@
-
 # SPARK + IPO
 
 SPARK(Spec, Plan, Archive, Research, Knowhow) 명령 처리 규칙 체계와 IPO(Input, Proc, Output) 데이터 처리 흐름을 결합한 AI Agentic 만능 명령 및 데이터 처리 시스템이다.
@@ -36,6 +35,7 @@ project/
 - `proc/archive/`는 명시적 지시 없이 열람하지 않는다
 - `proc/knowhow/`는 명시적 지시 없이 열람하지 않는다
 - 기술 스택·프로젝트 유형은 유저 지시 또는 `input/`·`proc/spec/`을 따른다. 명시되지 않았으면 임의로 정하지 말고 유저에게 확인한다 (웹·모바일(React Native)·데스크탑(Electron)·데이터처리(Node/Python)·라이브러리 등 무엇이든 될 수 있다)
+- 작업 완료 후 응답 시, 사용자가 요청한 소스코드나 수정된 결과 코드를 항상 답변에 함께 보여준다.
 
 
 ## Agent Skills
