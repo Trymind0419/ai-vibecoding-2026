@@ -1,0 +1,81 @@
+async function fetchDashboardData() {
+    try {
+        const balRes = await fetch('/api/v1/account/balance');
+        const balData = await balRes.json();
+        document.getElementById('account-balance').innerText = balData.balance.toLocaleString() + ' 원';
+
+        const sysRes = await fetch('/');
+        const sysData = await sysRes.json();
+        const dot = document.getElementById('bot-status');
+        const txt = document.getElementById('bot-status-text');
+        
+        if (sysData.bot_running) {
+            dot.className = 'status-dot on';
+            txt.innerText = 'Bot Running';
+        } else {
+            dot.className = 'status-dot off';
+            txt.innerText = 'Bot Offline';
+        }
+
+    } catch (e) {
+        console.error('Error fetching data:', e);
+    }
+}
+
+async function fetchMarketData() {
+    try {
+        const res = await fetch('/api/v1/market/ticker-tape');
+        const data = await res.json();
+        
+        // 1. 하단 티커 테이프 렌더링
+        const tickerContainer = document.getElementById('ticker-content');
+        let tickerHtml = '';
+        
+        // 2. 좌측 관심종목 리스트 렌더링
+        const watchlistBody = document.getElementById('watchlist-body');
+        let listHtml = '';
+
+        data.tickers.forEach(item => {
+            const colorClass = item.change > 0 ? 'up' : (item.change < 0 ? 'down' : '');
+            const sign = item.change > 0 ? '+' : '';
+            const priceStr = item.price.toLocaleString();
+            const changeStr = `${sign}${item.change}%`;
+
+            // 티커용 HTML
+            tickerHtml += `<div class="ticker-item">
+                <span style="color:#aaa">${item.name}</span>
+                <strong>${priceStr}</strong>
+                <span class="${colorClass}">${changeStr}</span>
+            </div>`;
+
+            // 관심종목 표용 HTML
+            listHtml += `<tr>
+                <td>${item.name} <br><span style="font-size:0.75em;color:#555">${item.symbol}</span></td>
+                <td><strong>${priceStr}</strong></td>
+                <td class="${colorClass}">${changeStr}</td>
+            </tr>`;
+        });
+        
+        tickerContainer.innerHTML = tickerHtml + tickerHtml; // 무한 스크롤 반복
+        watchlistBody.innerHTML = listHtml;
+
+    } catch (e) {
+        console.error('Market data fetch error:', e);
+    }
+}
+
+async function startBot() {
+    await fetch('/api/v1/bot/start', { method: 'POST' });
+    fetchDashboardData();
+}
+
+async function stopBot() {
+    await fetch('/api/v1/bot/stop', { method: 'POST' });
+    fetchDashboardData();
+}
+
+// 초기화 및 주기적 갱신
+fetchDashboardData();
+fetchMarketData();
+setInterval(fetchDashboardData, 3000);
+setInterval(fetchMarketData, 5000); // 5초마다 종목 시세 갱신

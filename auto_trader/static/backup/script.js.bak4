@@ -1,0 +1,150 @@
+async function fetchDashboardData() {
+    try {
+        const balRes = await fetch('/api/v1/account/balance');
+        const balData = await balRes.json();
+        document.getElementById('account-balance').innerText = balData.balance.toLocaleString() + ' 원';
+
+        const sysRes = await fetch('/health');
+        const sysData = await sysRes.json();
+        const dot = document.getElementById('bot-status');
+        const txt = document.getElementById('bot-status-text');
+        
+        if (sysData.bot_running) {
+            dot.className = 'status-dot on'; txt.innerText = 'Bot Running';
+        } else {
+            dot.className = 'status-dot off'; txt.innerText = 'Bot Offline';
+        }
+
+        const posRes = await fetch('/api/v1/account/positions');
+        const posData = await posRes.json();
+        const posList = document.getElementById('positions-list');
+        posList.innerHTML = '';
+        if(Object.keys(posData.positions).length === 0) {
+            posList.innerHTML = '<li class="empty-msg">보유 종목이 없습니다.</li>';
+        } else {
+            for (const [sym, qty] of Object.entries(posData.positions)) {
+                posList.innerHTML += `<li style="padding: 10px; background: rgba(0,0,0,0.3); margin-bottom: 5px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.05);">${sym} : <strong>${qty}주</strong></li>`;
+            }
+        }
+    } catch (e) {
+        console.error('Error fetching data:', e);
+    }
+}
+
+async function fetchMarketData() {
+    try {
+        const res = await fetch('/api/v1/market/ticker-tape');
+        const data = await res.json();
+        const tickerContainer = document.getElementById('ticker-content');
+        const watchlistBody = document.getElementById('watchlist-body');
+        
+        let tickerHtml = '', listHtml = '';
+        data.tickers.forEach(item => {
+            const colorClass = item.change > 0 ? 'up' : (item.change < 0 ? 'down' : '');
+            const sign = item.change > 0 ? '+' : '';
+            const priceStr = item.price.toLocaleString();
+            const changeStr = `${sign}${item.change}%`;
+
+            tickerHtml += `<div class="ticker-item"><span style="color:#aaa">${item.name}</span><strong>${priceStr}</strong><span class="${colorClass}">${changeStr}</span></div>`;
+            listHtml += `<tr><td>${item.name} <br><span style="font-size:0.75em;color:#555">${item.symbol}</span></td><td><strong>${priceStr}</strong></td><td class="${colorClass}">${changeStr}</td></tr>`;
+        });
+        
+        tickerContainer.innerHTML = tickerHtml + tickerHtml; 
+        watchlistBody.innerHTML = listHtml;
+    } catch (e) {
+        console.error('Market data fetch error:', e);
+    }
+}
+
+// === 봇 제어 ===
+async function startBot() {
+    await fetch('/api/v1/bot/start', { method: 'POST' });
+    alert("자동매매 봇이 켜졌습니다.");
+    fetchDashboardData();
+}
+
+async function stopBot() {
+    await fetch('/api/v1/bot/stop', { method: 'POST' });
+    alert("자동매매 봇이 꺼졌습니다.");
+    fetchDashboardData();
+}
+
+// === 수동 주문 (Buy / Sell) ===
+async function submitBuy() {
+    const symbol = document.getElementById('order-symbol').value;
+    const price = document.getElementById('order-price').value;
+    const qty = document.getElementById('order-qty').value;
+    
+    if(!symbol || !price || !qty) return alert("종목코드, 가격, 수량을 모두 입력하세요.");
+    
+    const res = await fetch('/api/v1/orders/buy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol, price: parseInt(price), qty: parseInt(qty) })
+    });
+    
+    const data = await res.json();
+    if(res.ok) alert(data.message); else alert("매수 실패: " + data.detail);
+    fetchDashboardData();
+}
+
+async function submitSell() {
+    const symbol = document.getElementById('order-symbol').value;
+    const price = document.getElementById('order-price').value;
+    const qty = document.getElementById('order-qty').value;
+    
+    if(!symbol || !price || !qty) return alert("종목코드, 가격, 수량을 모두 입력하세요.");
+    
+    const res = await fetch('/api/v1/orders/sell', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol, price: parseInt(price), qty: parseInt(qty) })
+    });
+    
+    const data = await res.json();
+    if(res.ok) alert(data.message); else alert("매도 실패: " + data.detail);
+    fetchDashboardData();
+}
+
+// === 주문 관리 ===
+async function modifyOrder() {
+    const orderId = document.getElementById('manage-order-id').value;
+    const newPrice = document.getElementById('manage-new-price').value;
+    if(!orderId || !newPrice) return alert("주문 ID와 정정 단가를 입력하세요.");
+    
+    const res = await fetch(`/api/v1/orders/${orderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_price: parseInt(newPrice), new_qty: 0 })
+    });
+    const data = await res.json();
+    alert(data.message);
+}
+
+async function cancelOrder() {
+    const orderId = document.getElementById('manage-order-id').value;
+    if(!orderId) return alert("취소할 주문 ID를 입력하세요.");
+    
+    const res = await fetch(`/api/v1/orders/${orderId}`, { method: 'DELETE' });
+    const data = await res.json();
+    alert(data.message);
+}
+
+// === 봇 설정 ===
+async function updateSettings() {
+    const kValue = document.getElementById('bot-setting-k').value;
+    if(!kValue) return alert("K값을 입력하세요.");
+    
+    const res = await fetch(`/api/v1/bot/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ breakout_k: parseFloat(kValue) })
+    });
+    const data = await res.json();
+    alert(data.message);
+}
+
+fetchDashboardData();
+fetchMarketData();
+setInterval(fetchDashboardData, 3000);
+setInterval(fetchMarketData, 5000);

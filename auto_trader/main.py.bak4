@@ -1,0 +1,196 @@
+# -*- coding: utf-8 -*-
+"""나무증권(NHPLUG) + FastAPI 주식 자동매매 봇 (Full API + Frontend)"""
+import sys
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+from fastapi import FastAPI, HTTPException, Path, Query
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from typing import Optional, List
+import asyncio
+from auto_trader.bot import bot
+
+app = FastAPI(
+    title="Auto Trader Advanced API", 
+    description="주식 자동매매 종합 API 시스템 (주문, 조회, 봇 제어, 프론트엔드 연동)",
+    version="2.1.0"
+)
+
+bot_task = None
+
+# 프론트엔드 정적 파일 마운트
+app.mount("/static", StaticFiles(directory="auto_trader/static"), name="static")
+
+# ==========================================
+# Pydantic 모델 정의
+# ==========================================
+class OrderRequest(BaseModel):
+    symbol: str
+    price: int
+    qty: int
+    order_type: str = "LIMIT"
+
+class OrderModifyRequest(BaseModel):
+    new_price: int
+    new_qty: int
+
+class BotSettingsUpdateRequest(BaseModel):
+    breakout_k: Optional[float] = None
+    max_loss_pct: Optional[float] = None
+
+# ==========================================
+# 봇 라이프사이클 이벤트
+# ==========================================
+@app.on_event("startup")
+async def startup_event():
+    global bot_task
+    pass
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    bot.stop()
+    if bot_task:
+        bot_task.cancel()
+
+# ==========================================
+# 1. 시스템 기본 API
+# ==========================================
+@app.get("/", tags=["System"])
+def root_redirect():
+    """접속 시 메인 HTS 대시보드로 자동 이동"""
+    return RedirectResponse(url="/static/index.html")
+
+@app.get("/health", tags=["System"])
+def health_check():
+    """시스템 상태 확인 (Health Check)"""
+    return {
+        "status": "online", 
+        "bot_running": bot.is_running,
+        "trader_mode": bot.trader.__class__.__name__
+    }
+
+# ==========================================
+# 2. 계좌 (Account) API
+# ==========================================
+@app.get("/api/v1/account/balance", tags=["Account"])
+async def get_balance():
+    """계좌 총 잔고 조회 (비동기 처리)"""
+    balance = await asyncio.to_thread(bot.trader.get_balance)
+    return {"balance": balance}
+
+@app.get("/api/v1/account/positions", tags=["Account"])
+def get_positions():
+    """현재 보유 중인 종목 및 수량 조회"""
+    positions = getattr(bot.trader, "positions", {})
+    return {"positions": positions}
+
+# ==========================================
+# 3. 주문 (Orders) API - GET, POST, PUT, DELETE
+# ==========================================
+@app.post("/api/v1/orders/buy", tags=["Orders"])
+async def create_buy_order(order: OrderRequest):
+    """신규 매수 주문 생성 (Create)"""
+    success = await asyncio.to_thread(bot.trader.order_buy, order.symbol, order.price, order.qty)
+    if success:
+        return {"status": "success", "message": "매수 주문이 접수되었습니다.", "order_id": "ord_b1234"}
+    raise HTTPException(status_code=400, detail="잔고 부족 또는 매수 거부됨")
+
+@app.post("/api/v1/orders/sell", tags=["Orders"])
+async def create_sell_order(order: OrderRequest):
+    """신규 매도 주문 생성 (Create)"""
+    success = await asyncio.to_thread(bot.trader.order_sell, order.symbol, order.price, order.qty)
+    if success:
+        return {"status": "success", "message": "매도 주문이 접수되었습니다.", "order_id": "ord_s1234"}
+    raise HTTPException(status_code=400, detail="보유 수량 부족 또는 매도 거부됨")
+
+@app.put("/api/v1/orders/{order_id}", tags=["Orders"])
+def modify_order(
+    order_id: str = Path(..., description="수정할 주문의 고유 ID"),
+    modify_req: OrderModifyRequest = None
+):
+    """미체결 주문 정정 (Update/PUT)"""
+    return {
+        "status": "success", 
+        "message": f"주문({order_id})이 단가 {modify_req.new_price}원으로 정정되었습니다."
+    }
+
+@app.delete("/api/v1/orders/{order_id}", tags=["Orders"])
+def cancel_order(order_id: str = Path(..., description="취소할 주문의 고유 ID")):
+    """미체결 주문 취소 (Delete)"""
+    return {"status": "success", "message": f"주문({order_id})이 정상적으로 취소되었습니다."}
+
+@app.get("/api/v1/orders/history", tags=["Orders"])
+def get_order_history(limit: int = Query(10, description="조회할 주문 개수")):
+    """과거 주문/체결 내역 조회 (Read)"""
+    return {"history": [], "message": f"최근 {limit}개의 체결 내역을 조회합니다."}
+
+# ==========================================
+# 4. 시세 (Market) API
+# ==========================================
+@app.get("/api/v1/market/quote/{symbol}", tags=["Market"])
+def get_quote(symbol: str = Path(..., description="조회할 종목코드 (예: 005930)")):
+    """단일 종목 현재가 조회"""
+    return {"symbol": symbol, "current_price": 75000, "change_rate": 1.5}
+
+@app.get("/api/v1/market/ticker-tape", tags=["Market"])
+async def get_ticker_tape():
+    """프론트엔드 HTS용 시총 상위 20개 실시간 조회"""
+    top_tickers = [
+        {"name": "삼성전자", "symbol": "005930", "price": 75000},
+        {"name": "SK하이닉스", "symbol": "000660", "price": 180000},
+        {"name": "LG에너지솔루션", "symbol": "373220", "price": 400000},
+        {"name": "삼성바이오로직스", "symbol": "207940", "price": 800000},
+        {"name": "현대차", "symbol": "005380", "price": 250000},
+        {"name": "기아", "symbol": "000270", "price": 120000},
+        {"name": "셀트리온", "symbol": "068270", "price": 180000},
+        {"name": "POSCO홀딩스", "symbol": "005490", "price": 450000},
+        {"name": "NAVER", "symbol": "035420", "price": 190000},
+        {"name": "포스코퓨처엠", "symbol": "003670", "price": 300000},
+        {"name": "LG화학", "symbol": "051910", "price": 420000},
+        {"name": "삼성물산", "symbol": "028260", "price": 150000},
+        {"name": "카카오", "symbol": "035720", "price": 55000},
+        {"name": "KB금융", "symbol": "105560", "price": 70000},
+        {"name": "신한지주", "symbol": "055550", "price": 50000},
+        {"name": "현대모비스", "symbol": "012330", "price": 240000},
+        {"name": "삼성생명", "symbol": "032830", "price": 90000},
+        {"name": "삼성화재", "symbol": "000810", "price": 310000},
+        {"name": "LG전자", "symbol": "066570", "price": 100000},
+        {"name": "HMM", "symbol": "011200", "price": 20000}
+    ]
+    
+    quotes = await asyncio.to_thread(bot.trader.get_quotes, top_tickers)
+    return {"tickers": quotes}
+
+# ==========================================
+# 5. 자동매매 봇 제어 (Bot Control) API
+# ==========================================
+@app.post("/api/v1/bot/start", tags=["Bot Control"])
+async def start_bot():
+    """자동매매 감시 루프 백그라운드 시작"""
+    global bot_task
+    if bot.is_running:
+        return {"message": "봇이 이미 실행 중입니다."}
+    
+    bot_task = asyncio.create_task(bot.run_loop())
+    return {"message": "자동매매 봇이 시작되었습니다."}
+
+@app.post("/api/v1/bot/stop", tags=["Bot Control"])
+def stop_bot():
+    """자동매매 감시 루프 강제 종료"""
+    bot.stop()
+    global bot_task
+    if bot_task:
+        bot_task.cancel()
+    return {"message": "자동매매 봇이 중지되었습니다."}
+
+@app.put("/api/v1/bot/settings", tags=["Bot Control"])
+def update_bot_settings(settings: BotSettingsUpdateRequest):
+    """실행 중인 봇의 전략 설정값 실시간 변경 (PUT)"""
+    if settings.breakout_k is not None:
+        bot.strategy.k = settings.breakout_k
+    return {"message": "봇 설정이 성공적으로 업데이트되었습니다.", "current_k": bot.strategy.k}

@@ -1,0 +1,38 @@
+# -*- coding: utf-8 -*-
+"""자동매매 봇 실행 엔진"""
+import asyncio
+from auto_trader.config import settings
+from auto_trader.database import db
+from auto_trader.paper_trader import PaperTrader
+from auto_trader.strategy import VolatilityBreakoutStrategy
+import sys
+
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+class TradingBot:
+    def __init__(self):
+        self.is_running = False
+        self.strategy = VolatilityBreakoutStrategy(k=settings.BREAKOUT_K)
+        
+        # 기존 MODE 변수명을 TRADING_MODE로 변경
+        if settings.TRADING_MODE == "PAPER":
+            self.trader = PaperTrader()
+        else:
+            self.trader = PaperTrader() # fallback for now
+
+    async def run_loop(self):
+        self.is_running = True
+        print(f"🚀 Trading Bot Started! (MODE: {settings.TRADING_MODE})")
+        while self.is_running:
+            await asyncio.sleep(5)
+            print(f"⏳ Monitoring market for {settings.TARGET_SYMBOLS}...")
+
+    def stop(self):
+        self.is_running = False
+        print("🛑 Trading Bot Stopped.")
+
+bot = TradingBot()

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>나무증권 자동매매</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="style.css?v=5.1">
+</head>
+<body>
+    <header class="obsidian-panel top-header">
+        <h1>나무증권 자동매매 HTS <span>Pro Dashboard</span></h1>
+        <div class="top-actions" style="display: flex; gap: 10px; align-items: center;">
+            <button id="refresh-btn" class="action-btn" onclick="manualRefresh()" style="padding: 5px 15px; border-radius: 4px; background: #2c3e50; color: white; border: none; cursor: pointer;">새로고침</button>
+            <button id="api-status-btn" class="action-btn" onclick="checkApiConnection()" style="padding: 5px 15px; border-radius: 4px; background: #e74c3c; color: white; border: none; font-weight: bold; cursor: pointer;" title="클릭하여 API 연결 상태 재확인">API 연결확인중</button>
+            <button id="mode-status-btn" class="action-btn" style="padding: 5px 15px; border-radius: 4px; background: #f39c12; color: white; border: none; font-weight: bold;">MODE</button>
+            <div class="status-indicator" style="margin-left: 10px;">
+                <span id="bot-status" class="status-dot off"></span>
+                <span id="bot-status-text">Bot Offline</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 상단 티커 테이프 -->
+    <div class="ticker-wrap obsidian-panel">
+        <div class="ticker-move" id="ticker-content">
+            <!-- JS로 데이터 채워짐 -->
+        </div>
+    </div>
+
+    <div class="hts-container">
+        <!-- 좌측 패널: 관심종목 리스트 -->
+        <aside class="obsidian-panel hts-panel">
+            <div class="panel-header">시총 상위 20 (Top 20)</div>
+            <div class="table-container">
+                <table class="hts-table">
+                    <thead>
+                        <tr>
+                            <th>종목명</th>
+                            <th>현재가</th>
+                            <th>등락률</th>
+                        </tr>
+                    </thead>
+                    <tbody id="watchlist-body">
+                        <!-- JS로 채워짐 -->
+                    </tbody>
+                </table>
+            </div>
+        </aside>
+
+        <!-- 중앙 패널: 트레이딩 데스크 (GUI API 제어) -->
+        <main class="obsidian-panel hts-panel center-panel">
+            <div class="panel-header">트레이딩 데스크 (API 컨트롤)</div>
+            <div class="center-content scrollable">
+                <div class="bot-controls">
+                    <button class="obsidian-btn glow" onclick="startBot()">자동매매 시작</button>
+                    <button class="obsidian-btn stop" onclick="stopBot()">자동매매 정지</button>
+                </div>
+
+                <!-- 실시간 봇 활동 터미널 콘솔 -->
+                <div id="bot-console-box" class="control-box" style="margin-top: 15px; margin-bottom: 20px; background: rgba(10, 15, 20, 0.85); border: 1px solid rgba(46, 204, 113, 0.35); border-radius: 8px; padding: 12px 15px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="display:inline-block; width:9px; height:9px; border-radius:50%; background:#7f8c8d;" id="bot-pulse-dot"></span>
+                            <strong style="font-size:0.85rem; color:#2ecc71;">🤖 실시간 자동매매 엔진 콘솔 (Live Bot Strategy & Order Logs)</strong>
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <span id="bot-strategy-status" style="font-size:0.75rem; color:#aaa;">전략: 🔥공격모드 | K=0.3 · 모멘텀≥+0.5% · 익절+5% · 손절-3% · 트레일링</span>
+                            <button type="button" class="obsidian-btn" style="padding:2px 8px; font-size:0.75rem;" onclick="fetchBotLogs()">새로고침</button>
+                        </div>
+                    </div>
+                    <div id="bot-log-terminal" style="font-family:'Consolas', 'Courier New', monospace; font-size:0.8rem; height:110px; overflow-y:auto; background:rgba(0,0,0,0.55); padding:8px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.08); line-height:1.6; color:#ecf0f1;">
+                        <div style="color:#7f8c8d;">[대기] 자동매매 시작 버튼을 누르면 실시간 시세 분석, 변동성 돌파 감시 및 자동 매수/매도 내역이 실시간으로 표출됩니다.</div>
+                    </div>
+                </div>
+                
+                <hr class="divider">
+
+                <!-- 종목 검색 & 차트 영역 -->
+                <div class="control-box" style="margin-bottom: 20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                        <h3 style="margin:0; border:none; padding:0;">실시간 시세 조회 (Quote Board)</h3>
+                        <div style="display:flex; gap:10px;">
+                            <input type="text" id="search-symbol" placeholder="종목코드 또는 기업명 (예: 삼성전자, 005930)" onkeydown="if(event.key==='Enter') searchStock();" style="width: 250px; padding: 5px 10px;">
+                            <button class="obsidian-btn glow" onclick="searchStock()" style="padding: 5px 15px;">검색</button>
+                        </div>
+                    </div>
+                    
+                    <div id="quote-board" class="quote-board">
+                        <div class="quote-header">
+                            <span id="quote-name">종목을 선택하세요</span>
+                            <span id="quote-symbol" style="color:#888; font-size:0.5em; margin-left:10px;"></span>
+                        </div>
+                        <div class="quote-price-box">
+                            <h1 id="quote-price">0 원</h1>
+                            <span id="quote-change" class="quote-change">0.00%</span>
+                        </div>
+                    </div>
+    
+                </div>
+    
+                <!-- 가상계좌 금액 & 이번 추천에 사용할 금액 (실거래 전환 연동 영역) -->
+                <div class="control-box account-budget-card" style="margin-bottom: 20px; background: linear-gradient(145deg, rgba(20, 30, 38, 0.7), rgba(15, 20, 25, 0.8)); border: 1px solid rgba(46, 204, 113, 0.25);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px;">
+                        <h3 style="margin:0; border:none; padding:0; display:flex; align-items:center; gap:8px;">
+                            <span>💼 계좌 잔고 및 추천 매매 예산</span>
+                            <span id="account-mode-badge" style="font-size:0.75rem; font-weight:normal; background:rgba(243, 156, 18, 0.2); color:#f39c12; border:1px solid rgba(243,156,18,0.4); padding:2px 8px; border-radius:12px;">가상계좌 (모의투자)</span>
+                        </h3>
+                        <span style="font-size:0.8rem; color:#888;">※ 실거래(LIVE) 전환 시 나무증권 실제 계좌 금액 자동 표시</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch;">
+                        <!-- 1. 가상계좌 / 실거래계좌 금액 -->
+                        <div class="budget-inner-card">
+                            <div>
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span id="center-account-title" style="color: #aaa; font-size: 0.9rem; font-weight: 500;">가상계좌 금액</span>
+                                    <span style="font-size: 0.75rem; color: #2ecc71;">실시간 연동</span>
+                                </div>
+                                <div style="margin-top: 8px;">
+                                    <h2 id="center-account-balance" style="margin: 0; font-size: 1.8rem; font-weight: bold; letter-spacing: -0.5px;">10,000,000 원</h2>
+                                </div>
+                            </div>
+                            <div id="center-account-desc" style="margin-top: 10px; font-size: 0.75rem; color: #7f8c8d;">
+                                실제 금액 매매(LIVE) 전환 시 나무증권 실거래계좌 잔고가 표시됩니다.
+                            </div>
+                        </div>
+
+                        <!-- 2. 이번 추천에 사용할 금액 -->
+                        <div class="budget-inner-card budget-highlight-card">
+                            <div>
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="color: #2ecc71; font-size: 0.9rem; font-weight: bold;">이번 추천에 사용할 금액 (1회 매수 예산)</span>
+                                    <span id="budget-ratio-tag" style="font-size: 0.75rem; color: #2ecc71; background: rgba(46,204,113,0.15); padding: 2px 6px; border-radius: 4px;">잔고의 20%</span>
+                                </div>
+                                <div style="margin-top: 8px; display:flex; align-items:center; gap:10px;">
+                                    <h2 id="display-trade-budget" style="margin: 0; font-size: 1.8rem; font-weight: bold; color: #2ecc71; letter-spacing: -0.5px;">2,000,000 원</h2>
+                                </div>
+                            </div>
+
+                            <!-- 금액 조정 및 퀵 버튼 -->
+                            <div style="margin-top: 10px;">
+                                <div style="display:flex; gap:6px; align-items:center;">
+                                    <input type="number" id="input-trade-budget" value="2000000" step="100000" class="budget-input" placeholder="직접 입력 (원)">
+                                    <button class="obsidian-btn glow" onclick="applyCustomBudget()" style="padding:6px 12px; font-size:0.8rem;">설정</button>
+                                </div>
+                                <div id="budget-pct-group" style="display:flex; gap:5px; margin-top: 8px;">
+                                    <button type="button" class="budget-pct-btn" data-pct="10" onclick="setBudgetPercent(10)">10%</button>
+                                    <button type="button" class="budget-pct-btn active" data-pct="20" onclick="setBudgetPercent(20)">20%</button>
+                                    <button type="button" class="budget-pct-btn" data-pct="30" onclick="setBudgetPercent(30)">30%</button>
+                                    <button type="button" class="budget-pct-btn" data-pct="50" onclick="setBudgetPercent(50)">50%</button>
+                                    <button type="button" class="budget-pct-btn" data-pct="100" onclick="setBudgetPercent(100)">전액</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- [후보찾기] 액션 바 (계좌 잔고 및 추천 매매 예산 카드 내 하단) -->
+                    <div class="find-candidates-bar">
+                        <div style="display:flex; align-items:center; gap: 8px;">
+                            <span style="font-size: 1.15rem;">🎯</span>
+                            <span class="find-candidates-desc">
+                                이번 추천에 사용할 금액(<strong id="rec-budget-indicator" style="color: #2ecc71; font-weight: bold;">2,000,000 원</strong>)으로만 투자할 유망 종목 TOP 5를 실시간 발굴합니다.
+                            </span>
+                        </div>
+                        <button id="find-candidates-btn" type="button" class="obsidian-btn glow rec-search-btn" onclick="fetchTop5Recommendations()">
+                            <span id="find-candidates-icon">🔍</span>
+                            <span id="find-candidates-text">후보찾기 (TOP 5 추천)</span>
+                        </button>
+                    </div>
+
+                    <!-- 추천 종목 TOP 5 카드 영역 (결과 표시) -->
+                    <div id="recommendations-container" class="recommendations-container" style="display: none;">
+                        <div class="rec-header-row">
+                            <h4 style="margin: 0; color: #2ecc71; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                                <span>🏆 이번 예산 기반 투자 추천 종목 TOP 5</span>
+                                <span id="rec-result-badge" class="rec-status-badge">실시간 분석 완료</span>
+                            </h4>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span id="rec-timestamp" style="font-size: 0.78rem; color: #888;"></span>
+                                <button type="button" class="obsidian-btn rec-refresh-btn" onclick="fetchTop5Recommendations()" title="새로고침">🔄 새로고침</button>
+                            </div>
+                        </div>
+
+                        <!-- 5개 종목 카드 그리드 -->
+                        <div id="rec-cards-grid" class="rec-cards-grid">
+                            <!-- JS를 통해 동적 생성 -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-grid">
+                    <!-- 수동 주문 -->
+                    <div class="control-box">
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 15px;">
+                            <h3 style="margin:0; border:none; padding:0;">1. 수동 주문 (Buy / Sell)</h3>
+                            <button type="button" class="obsidian-btn" onclick="applyBudgetToOrder()" style="padding: 4px 10px; font-size: 0.75rem; background: rgba(46, 204, 113, 0.15); border: 1px solid rgba(46, 204, 113, 0.3); color: #2ecc71; cursor:pointer;">⚡ 추천 예산으로 수량 자동계산</button>
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="order-symbol" placeholder="종목코드 (예: 005930)">
+                            <input type="number" id="order-price" placeholder="주문 단가 (예: 75000)">
+                            <input type="number" id="order-qty" placeholder="수량 (예: 10)">
+                        </div>
+                        <div class="btn-group">
+                            <button class="obsidian-btn buy-btn" onclick="submitBuy()">매수 (Buy)</button>
+                            <button class="obsidian-btn sell-btn" onclick="submitSell()">매도 (Sell)</button>
+                        </div>
+                    </div>
+
+                    <!-- 주문 관리 -->
+                    <div class="control-box">
+                        <h3>2. 주문 정정 / 취소 (Modify / Cancel)</h3>
+                        <div class="input-group">
+                            <input type="text" id="manage-order-id" placeholder="주문 ID (예: ord_b1234)">
+                            <input type="number" id="manage-new-price" placeholder="정정 단가">
+                        </div>
+                        <div class="btn-group">
+                            <button class="obsidian-btn modify-btn" onclick="modifyOrder()">주문 정정</button>
+                            <button class="obsidian-btn stop" onclick="cancelOrder()">주문 취소</button>
+                        </div>
+                    </div>
+
+                    <!-- 봇 설정 -->
+                    <div class="control-box">
+                        <h3>3. 실시간 봇 설정 (Bot Settings)</h3>
+                        <div class="input-group">
+                            <input type="number" step="0.1" id="bot-setting-k" placeholder="돌파계수 K 변경 (예: 0.6)">
+                        </div>
+                        <div class="btn-group">
+                            <button class="obsidian-btn modify-btn" style="width:100%" onclick="updateSettings()">설정 적용 (Apply)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 우측 패널: 가상 포트폴리오 -->
+        <aside class="obsidian-panel hts-panel right-panel">
+            <div class="panel-header" id="portfolio-panel-header">가상 포트폴리오 (포지션 현황)</div>
+            <div class="account-summary">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 id="right-account-title" style="margin:0;">가상계좌 평가 자산</h3>
+                    <span id="right-account-badge" style="font-size:0.7rem; color:#f39c12; border:1px solid rgba(243,156,18,0.4); padding:1px 5px; border-radius:10px;">모의투자</span>
+                </div>
+                <p class="balance" id="account-balance" style="margin: 8px 0 15px 0;">0 원</p>
+                <div style="border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:0.8rem; color:#888;">이번 추천 매매 예산</span>
+                        <strong id="right-trade-budget" style="font-size:1rem; color:#2ecc71;">2,000,000 원</strong>
+                    </div>
+                </div>
+            </div>
+            <!-- 실시간 포트폴리오 수익률 요약 -->
+            <div id="portfolio-pnl-section" class="portfolio-pnl-section" style="display:none; margin-top: 12px; padding: 12px 14px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                    <h4 style="margin:0; font-size:0.85rem; color:#aaa; font-weight:500;">📈 실시간 포트폴리오 수익률</h4>
+                    <span id="pnl-update-time" style="font-size:0.7rem; color:#555;"></span>
+                </div>
+                <!-- 합산 수익률 -->
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                    <div style="background:rgba(0,0,0,0.25); padding:8px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.04);">
+                        <div style="font-size:0.7rem; color:#888; margin-bottom:3px;">총 평가금액</div>
+                        <div id="pnl-total-eval" style="font-size:1.05rem; font-weight:bold;">0 원</div>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.25); padding:8px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.04);">
+                        <div style="font-size:0.7rem; color:#888; margin-bottom:3px;">총 평가손익</div>
+                        <div id="pnl-total-pnl" style="font-size:1.05rem; font-weight:bold;">0 원</div>
+                        <div id="pnl-total-pct" style="font-size:0.8rem; font-weight:600; margin-top:2px;">0.00%</div>
+                    </div>
+                </div>
+                <!-- 종목별 수익률 리스트 -->
+                <div id="pnl-items-list" style="max-height: 200px; overflow-y: auto;">
+                    <!-- JS로 동적 생성 -->
+                </div>
+            </div>
+            <div class="positions-container">
+                <h3>보유 종목 (가상 포트폴리오)</h3>
+                <ul id="positions-list">
+                    <li class="empty-msg">보유 종목이 없습니다.</li>
+                </ul>
+            </div>
+        </aside>
+    </div>
+
+    <!-- 추천 종목 상세 확대 모달 (Center Spotlight Zoom Modal) -->
+    <div id="rec-detail-modal" class="rec-modal-overlay" onclick="closeRecModal(event)" style="display: none;">
+        <div class="rec-modal-card" onclick="event.stopPropagation()">
+            <button type="button" class="rec-modal-close-btn" onclick="closeRecModal()" title="닫기 (ESC)">✕</button>
+            <div id="rec-modal-body">
+                <!-- 동적으로 채워질 확대 상세 내용 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 우측 하단 플로팅 테마 토글 버튼 -->
+    <button id="theme-toggle-btn" class="theme-floating-btn" onclick="toggleTheme()" title="테마 변경 (Dark / Light)">
+        <span id="theme-icon">🌙</span>
+        <span id="theme-label">Dark</span>
+    </button>
+
+    <script src="script.js?v=5.1"></script>
+</body>
+</html>

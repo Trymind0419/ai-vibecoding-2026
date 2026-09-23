@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>AI VibeTrading HTS</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="obsidian-panel top-header">
+        <h1>AI VibeTrading HTS <span>Pro Dashboard</span></h1>
+        <div class="status-indicator">
+            <span id="bot-status" class="status-dot off"></span>
+            <span id="bot-status-text">Bot Offline</span>
+        </div>
+    </header>
+    <!-- 상단 티커 테이프 -->
+    <div class="ticker-wrap obsidian-panel">
+        <div class="ticker-move" id="ticker-content">
+            <!-- JS로 데이터 채워짐 -->
+        </div>
+    </div>
+
+    <div class="hts-container">
+        <!-- 좌측 패널: 관심종목 리스트 -->
+        <aside class="obsidian-panel hts-panel">
+            <div class="panel-header">관심종목 (Top 20)</div>
+            <div class="table-container">
+                <table class="hts-table">
+                    <thead>
+                        <tr>
+                            <th>종목명</th>
+                            <th>현재가</th>
+                            <th>등락률</th>
+                        </tr>
+                    </thead>
+                    <tbody id="watchlist-body">
+                        <!-- JS로 채워짐 -->
+                    </tbody>
+                </table>
+            </div>
+        </aside>
+
+        <!-- 중앙 패널: 메인 대시보드 / 차트 영역 -->
+        <main class="obsidian-panel hts-panel center-panel">
+            <div class="panel-header">시장 동향 및 봇 제어</div>
+            <div class="center-content">
+                <div class="bot-controls">
+                    <button class="obsidian-btn glow" onclick="startBot()">자동매매 시작</button>
+                    <button class="obsidian-btn stop" onclick="stopBot()">자동매매 정지</button>
+                </div>
+                <div class="chart-placeholder">
+                    [ 실시간 차트 연동 예정 공간 ]
+                </div>
+            </div>
+        </main>
+
+        <!-- 우측 패널: 계좌 및 보유종목 -->
+        <aside class="obsidian-panel hts-panel right-panel">
+            <div class="panel-header">내 계좌 및 포지션</div>
+            <div class="account-summary">
+                <h3>총 평가 자산</h3>
+                <p class="balance" id="account-balance">0 원</p>
+            </div>
+            <div class="positions-container">
+                <h3>보유 종목</h3>
+                <ul id="positions-list">
+                    <li class="empty-msg">보유 종목이 없습니다.</li>
+                </ul>
+            </div>
+        </aside>
+    </div>
+
+
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# -*- coding: utf-8 -*-
+"""나무증권 API 연동 모듈"""
+class NHTrader:
+    def __init__(self, api_key, api_secret, account):
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.account = account
+
+    def get_balance(self):
+        return 1000000 # Dummy
+
+    def order_buy(self, symbol, price, qty):
+        return True
+
+    def order_sell(self, symbol, price, qty):
+        return True

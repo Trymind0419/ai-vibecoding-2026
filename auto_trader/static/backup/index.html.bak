@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Trader Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="obsidian-panel">
+            <h1>AI VibeTrading Dashboard</h1>
+            <div class="status-indicator">
+                <span id="bot-status" class="status-dot off"></span>
+                <span id="bot-status-text">Bot Offline</span>
+            </div>
+        </header>
+
+        <main>
+            <div class="obsidian-panel card">
+                <h2>계좌 자산</h2>
+                <p class="balance" id="account-balance">0 원</p>
+                <div class="controls">
+                    <button class="obsidian-btn" onclick="startBot()">봇 시작</button>
+                    <button class="obsidian-btn" onclick="stopBot()">봇 정지</button>
+                </div>
+            </div>
+            
+            <div class="obsidian-panel card">
+                <h2>보유 종목</h2>
+                <ul id="positions-list">
+                    <li>보유 종목이 없습니다.</li>
+                </ul>
+            </div>
+        </main>
+    </div>
+
+    <!-- 얇고 긴 티커 테이프 줄 (하단) -->
+    <div class="ticker-wrap obsidian-panel">
+        <div class="ticker-move" id="ticker-content">
+            <!-- JS로 데이터 채워짐 -->
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

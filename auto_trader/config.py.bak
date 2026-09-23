@@ -1,0 +1,15 @@
+# -*- coding: utf-8 -*-
+"""설정 관리 모듈"""
+import os
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    NH_API_KEY: str = "demo_key"
+    NH_API_SECRET: str = "demo_secret"
+    NH_ACCOUNT: str = "demo_account"
+    MODE: str = "PAPER" # PAPER or LIVE
+
+    class Config:
+        env_file = ".env"
+
+settings = Settings()

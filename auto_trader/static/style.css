@@ -1,0 +1,1388 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&display=swap');
+
+body {
+    margin: 0; padding: 0; font-family: 'Noto Sans KR', sans-serif; color: #e0e0e0;
+    background: radial-gradient(circle at 10% 20%, rgba(46, 204, 113, 0.15), transparent 60%),
+                radial-gradient(circle at 90% 80%, rgba(26, 188, 156, 0.15), transparent 50%),
+                linear-gradient(135deg, #0f171e, #1a252c);
+    background-attachment: fixed; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+}
+
+.obsidian-panel {
+    background: rgba(15, 20, 25, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.15);
+}
+
+.top-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; border-radius: 0; border-bottom: 1px solid rgba(46, 204, 113, 0.3); }
+.top-header h1 { margin: 0; font-size: 1.4rem; background: linear-gradient(90deg, #2ecc71, #1abc9c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.top-header h1 span { font-size: 0.9rem; color: #888; -webkit-text-fill-color: #888; margin-left: 10px; }
+
+.status-indicator { display: flex; align-items: center; gap: 10px; font-weight: bold; }
+.status-dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 8px rgba(0,0,0,0.5); }
+.status-dot.on { background: #2ecc71; box-shadow: 0 0 10px #2ecc71; }
+.status-dot.off { background: #e74c3c; box-shadow: 0 0 10px #e74c3c; }
+
+/* 상단 티커 */
+.ticker-wrap {
+    width: 100%; height: 40px; overflow: hidden; display: flex; align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.05); border-radius: 0; background: #0f1519; flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+.ticker-move { display: flex; white-space: nowrap; animation: tickerLeftToRight 60s linear infinite; }
+.ticker-item { padding: 0 40px; font-size: 0.95rem; display: flex; align-items: center; gap: 12px; }
+@keyframes tickerLeftToRight { 0% { transform: translateX(-100%); } 100% { transform: translateX(100vw); } }
+
+.hts-container { display: grid; grid-template-columns: 320px 1fr 320px; gap: 15px; padding: 15px; flex: 1; overflow: hidden; margin-bottom: 10px; }
+.hts-panel { border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
+.panel-header { background: rgba(0,0,0,0.4); padding: 12px 15px; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.05); color: #2ecc71; }
+
+.table-container { flex: 1; overflow-y: auto; }
+.hts-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.hts-table th, .hts-table td { padding: 10px 12px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.hts-table th { color: #888; background: rgba(0,0,0,0.6); position: sticky; top: 0; }
+.hts-table th:first-child, .hts-table td:first-child { text-align: left; }
+.hts-table tr:hover { background: rgba(255,255,255,0.05); }
+
+.up { color: #e74c3c !important; }
+.down { color: #3498db !important; }
+
+/* 중앙 패널 & Form UI */
+.center-content { padding: 20px; display: flex; flex-direction: column; height: 100%; gap: 20px; }
+.scrollable { overflow-y: auto; }
+.bot-controls { display: flex; gap: 15px; justify-content: center; }
+.divider { border: 0; height: 1px; background: rgba(255,255,255,0.05); margin: 0; width: 100%; }
+
+.control-grid { display: grid; gap: 15px; grid-template-columns: 1fr; }
+.control-box { background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
+.control-box h3 { margin-top: 0; font-size: 1rem; color: #2ecc71; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 15px;}
+.input-group { display: flex; gap: 10px; margin-bottom: 15px; }
+.input-group input { 
+    flex: 1; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); 
+    padding: 10px; border-radius: 6px; color: #fff; outline: none; transition: 0.3s;
+}
+.input-group input:focus { border-color: #2ecc71; box-shadow: 0 0 8px rgba(46, 204, 113, 0.4); }
+.btn-group { display: flex; gap: 10px; }
+.btn-group button { flex: 1; padding: 12px; font-size: 0.95rem; }
+
+/* Buttons */
+.obsidian-btn {
+    border-radius: 8px; cursor: pointer; font-weight: bold;
+    background: linear-gradient(145deg, #2c3e50, #1a252f); border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e0e0e0; box-shadow: 3px 3px 6px rgba(0,0,0,0.4), inset 1px 1px 2px rgba(255,255,255,0.1);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.obsidian-btn.glow:hover { background: linear-gradient(145deg, #34495e, #2c3e50); box-shadow: 0 0 15px rgba(46, 204, 113, 0.6); border-color: #2ecc71; transform: translateY(-2px); color: #fff; }
+.obsidian-btn.stop:hover { background: linear-gradient(145deg, #34495e, #2c3e50); box-shadow: 0 0 15px rgba(231, 76, 60, 0.6); border-color: #e74c3c; transform: translateY(-2px); color: #fff; }
+/* 한국식 매수(빨강), 매도(파랑) 컬러 오버라이드 */
+.buy-btn { border-color: rgba(231,76,60,0.5); color: #ff7675; }
+.buy-btn:hover { background: linear-gradient(145deg, #4a1919, #2d0f0f); border-color: #e74c3c; box-shadow: 0 0 15px rgba(231,76,60,0.5); color: #fff; transform: translateY(-2px);}
+.sell-btn { border-color: rgba(52,152,219,0.5); color: #74b9ff; }
+.sell-btn:hover { background: linear-gradient(145deg, #193a4a, #0f252d); border-color: #3498db; box-shadow: 0 0 15px rgba(52,152,219,0.5); color: #fff; transform: translateY(-2px);}
+.modify-btn { border-color: rgba(241,196,15,0.5); color: #ffeaa7; }
+.modify-btn:hover { background: linear-gradient(145deg, #4a3e19, #2d250f); border-color: #f1c40f; box-shadow: 0 0 15px rgba(241,196,15,0.5); color:#fff; transform: translateY(-2px);}
+
+/* 예산 비율 퀵 버튼 */
+.budget-pct-btn {
+    flex: 1;
+    padding: 6px 4px;
+    font-size: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: #bbb;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.budget-pct-btn:hover {
+    background: rgba(46, 204, 113, 0.12);
+    border-color: rgba(46, 204, 113, 0.3);
+    color: #fff;
+}
+.budget-pct-btn.active {
+    background: rgba(46, 204, 113, 0.22) !important;
+    border-color: #2ecc71 !important;
+    color: #2ecc71 !important;
+    font-weight: bold !important;
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.35);
+}
+
+/* 예산 카드 내부 박스 */
+.budget-inner-card {
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
+    padding: 15px 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.budget-highlight-card {
+    border-color: rgba(46, 204, 113, 0.25);
+}
+.budget-input {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    color: #fff;
+    outline: none;
+    transition: 0.3s;
+}
+.budget-input:focus {
+    border-color: #2ecc71;
+    box-shadow: 0 0 8px rgba(46, 204, 113, 0.4);
+}
+
+/* 계좌 영역 */
+.account-summary { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.account-summary h3, .positions-container h3 { margin: 0 0 10px 0; font-size: 0.9rem; color: #888; }
+.balance { font-size: 2rem; font-weight: 700; margin: 0; color: #fff; text-shadow: 0 0 10px rgba(46, 204, 113, 0.3); }
+.positions-container { padding: 20px; flex: 1; overflow-y: auto; }
+#positions-list { list-style: none; padding: 0; margin: 0; }
+.empty-msg { color: #555; font-style: italic; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(46, 204, 113, 0.5); }
+
+/* Quote Board Styles */
+.quote-board {
+    width: 100%;
+    min-height: 160px;
+    padding: 20px 0;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.quote-header {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #e0e0e0;
+    margin-bottom: 10px;
+}
+
+.quote-price-box {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 15px;
+}
+
+#quote-price {
+    font-size: 3.2rem;
+    margin: 0;
+    font-weight: 900;
+}
+
+.quote-change {
+    font-size: 1.6rem;
+    font-weight: bold;
+}
+
+/* ============================================================
+   Floating Theme Toggle Button & Light Theme Styles
+   ============================================================ */
+
+/* 1. Floating Theme Toggle Button (오른쪽 하단 고정) */
+.theme-floating-btn {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 30px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    background: rgba(15, 25, 35, 0.88);
+    color: #2ecc71;
+    border: 1px solid rgba(46, 204, 113, 0.4);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 12px rgba(46, 204, 113, 0.25);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    user-select: none;
+    outline: none;
+}
+
+.theme-floating-btn:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6), 0 0 20px rgba(46, 204, 113, 0.5);
+    border-color: #2ecc71;
+}
+
+.theme-floating-btn:active {
+    transform: translateY(0) scale(0.98);
+}
+
+/* ==========================================
+   추천 매매 TOP 5 후보찾기 & 카드 UI
+   ========================================== */
+.find-candidates-bar {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.find-candidates-desc {
+    font-size: 0.85rem;
+    color: #a0aec0;
+}
+
+.rec-search-btn {
+    padding: 9px 20px;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(145deg, #10b981, #059669);
+    border: 1px solid #34d399;
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+}
+
+.rec-search-btn:hover {
+    background: linear-gradient(145deg, #059669, #047857);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+    border-color: #6ee7b7;
+    transform: translateY(-2px);
+}
+
+.recommendations-container {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(46, 204, 113, 0.25);
+    animation: fadeInRec 0.35s ease-out;
+}
+
+@keyframes fadeInRec {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.rec-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.rec-status-badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(46, 204, 113, 0.3);
+}
+
+.rec-refresh-btn {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    color: #aaa;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+}
+
+.rec-refresh-btn:hover {
+    color: #fff;
+    border-color: rgba(46, 204, 113, 0.4);
+}
+
+/* 카드 그리드 (반응형 5개 카드) */
+.rec-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+}
+
+/* 개별 추천 카드 */
+.rec-card {
+    background: linear-gradient(145deg, rgba(20, 28, 36, 0.85), rgba(13, 19, 24, 0.95));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.rec-card:hover {
+    transform: translateY(-4px) scale(1.015);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 16px rgba(46, 204, 113, 0.25);
+    border-color: #2ecc71;
+}
+
+/* 1위 카드 골드 하이라이트 */
+.rec-card.rank-1 {
+    border-color: rgba(241, 196, 15, 0.5);
+    box-shadow: 0 4px 20px rgba(241, 196, 15, 0.15);
+}
+.rec-card.rank-1::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, #f1c40f, #e67e22);
+}
+
+/* 카드 헤더 */
+.rec-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rec-rank-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.07);
+    color: #e2e8f0;
+}
+
+.rec-rank-badge.rank-1 {
+    background: linear-gradient(135deg, rgba(241, 196, 15, 0.25), rgba(230, 126, 34, 0.25));
+    border: 1px solid rgba(241, 196, 15, 0.6);
+    color: #f1c40f;
+}
+
+.rec-rank-badge.rank-2 {
+    background: linear-gradient(135deg, rgba(189, 195, 199, 0.25), rgba(149, 165, 166, 0.25));
+    border: 1px solid rgba(189, 195, 199, 0.6);
+    color: #ecf0f1;
+}
+
+.rec-rank-badge.rank-3 {
+    background: linear-gradient(135deg, rgba(211, 84, 0, 0.25), rgba(230, 126, 34, 0.25));
+    border: 1px solid rgba(211, 84, 0, 0.6);
+    color: #e67e22;
+}
+
+.rec-rank-badge.rank-4,
+.rec-rank-badge.rank-5 {
+    border: 1px solid rgba(52, 152, 219, 0.4);
+    color: #74b9ff;
+}
+
+.rec-score-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(46, 204, 113, 0.12);
+    border: 1px solid rgba(46, 204, 113, 0.35);
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+
+.rec-score-title {
+    font-size: 0.72rem;
+    color: #888;
+}
+
+.rec-score-val {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #2ecc71;
+}
+
+.rec-score-grade {
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: #2ecc71;
+    color: #0f171e;
+}
+.rec-score-grade.grade-S-plus { background: #f1c40f; color: #111; }
+.rec-score-grade.grade-A-plus { background: #2ecc71; color: #111; }
+.rec-score-grade.grade-A { background: #3498db; color: #fff; }
+.rec-score-grade.grade-B-plus { background: #95a5a6; color: #111; }
+
+/* 종목 정보 영역 */
+.rec-stock-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 8px;
+}
+
+.rec-stock-name {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.rec-stock-code {
+    font-size: 0.75rem;
+    font-weight: normal;
+    color: #7f8c8d;
+}
+
+.rec-stock-price-box {
+    text-align: right;
+}
+
+.rec-stock-price {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.rec-stock-change {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* 예산 계획 박스 */
+.rec-budget-box {
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 6px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.rec-budget-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
+}
+
+.rec-budget-label {
+    color: #888;
+}
+
+.rec-budget-val {
+    color: #e0e0e0;
+    font-weight: 500;
+}
+
+.rec-budget-val.rec-highlight {
+    color: #2ecc71;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.rec-budget-val.rec-sub {
+    font-size: 0.72rem;
+    color: #999;
+}
+
+/* 게이지 바 */
+.rec-progress-track {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.rec-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #2ecc71);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+}
+
+/* 추천 사유 박스 */
+.rec-reason-box {
+    background: rgba(0, 0, 0, 0.28);
+    border-left: 3px solid #2ecc71;
+    border-radius: 0 6px 6px 0;
+    padding: 8px 10px;
+}
+
+.rec-reason-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #2ecc71;
+    margin-bottom: 3px;
+}
+
+.rec-reason-text {
+    font-size: 0.78rem;
+    color: #cbd5e1;
+    line-height: 1.45;
+    word-break: keep-all;
+}
+
+/* 카드 하단 액션 버튼 */
+.rec-card-actions {
+    margin-top: 4px;
+}
+
+.rec-apply-btn {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(145deg, rgba(46, 204, 113, 0.18), rgba(39, 174, 96, 0.12));
+    border: 1px solid rgba(46, 204, 113, 0.35);
+    color: #2ecc71;
+}
+
+.rec-apply-btn:hover {
+    background: linear-gradient(145deg, rgba(46, 204, 113, 0.35), rgba(39, 174, 96, 0.25));
+    border-color: #2ecc71;
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(46, 204, 113, 0.4);
+}
+
+/* ==========================================
+   추천 종목 상세 확대 모달 (Center Spotlight Modal)
+   ========================================== */
+.rec-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.78);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    animation: modalOverlayFadeIn 0.25s ease-out;
+}
+
+@keyframes modalOverlayFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.rec-modal-card {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: linear-gradient(145deg, #15202b, #0d141a);
+    border: 1px solid rgba(46, 204, 113, 0.4);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(46, 204, 113, 0.25);
+    border-radius: 16px;
+    padding: 28px;
+    animation: modalZoomIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalZoomIn {
+    from { transform: scale(0.85); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.rec-modal-close-btn {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #e0e0e0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    font-size: 1.1rem;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 2;
+}
+
+.rec-modal-close-btn:hover {
+    background: rgba(231, 76, 60, 0.25);
+    border-color: #e74c3c;
+    color: #ff7675;
+    transform: rotate(90deg);
+}
+
+/* 모달 헤더 */
+.modal-header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.modal-rank-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 5px 14px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #e2e8f0;
+}
+
+.modal-rank-badge.rank-1 {
+    background: linear-gradient(135deg, rgba(241, 196, 15, 0.3), rgba(230, 126, 34, 0.3));
+    border: 1px solid rgba(241, 196, 15, 0.6);
+    color: #f1c40f;
+}
+
+.modal-score-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(46, 204, 113, 0.15);
+    border: 1px solid rgba(46, 204, 113, 0.4);
+    padding: 4px 12px;
+    border-radius: 8px;
+}
+
+.modal-score-val {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #2ecc71;
+}
+
+.modal-score-grade {
+    font-size: 0.8rem;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: #2ecc71;
+    color: #0f171e;
+}
+.modal-score-grade.grade-S-plus { background: #f1c40f; color: #111; }
+.modal-score-grade.grade-A-plus { background: #2ecc71; color: #111; }
+.modal-score-grade.grade-A { background: #3498db; color: #fff; }
+.modal-score-grade.grade-B-plus { background: #95a5a6; color: #111; }
+
+/* 모달 종목 히어로 카드 */
+.modal-stock-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    background: rgba(0, 0, 0, 0.35);
+    padding: 16px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.modal-stock-name {
+    margin: 0;
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-stock-code {
+    font-size: 0.9rem;
+    font-weight: normal;
+    color: #888;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.modal-price-box {
+    text-align: right;
+}
+
+.modal-price {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+}
+
+.modal-change {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+/* 정량 다면 평가 지표 그리드 */
+.modal-score-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.modal-score-item {
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 12px 16px;
+}
+
+.modal-score-label {
+    font-size: 0.8rem;
+    color: #888;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.modal-score-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #2ecc71;
+}
+
+/* 추천 사유 박스 */
+.modal-reason-box {
+    background: rgba(0, 0, 0, 0.3);
+    border-left: 4px solid #2ecc71;
+    border-radius: 0 10px 10px 0;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+}
+
+.modal-reason-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #2ecc71;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.modal-reason-text {
+    font-size: 0.92rem;
+    color: #cbd5e1;
+    line-height: 1.55;
+    word-break: keep-all;
+}
+
+/* 예산 투자 시뮬레이션 박스 */
+.modal-budget-plan {
+    background: linear-gradient(145deg, rgba(46, 204, 113, 0.08), rgba(39, 174, 96, 0.04));
+    border: 1px solid rgba(46, 204, 113, 0.25);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 22px;
+}
+
+.modal-plan-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #2ecc71;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.modal-plan-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.modal-plan-label {
+    color: #94a3b8;
+}
+
+.modal-plan-val {
+    color: #e2e8f0;
+    font-weight: 600;
+}
+
+.modal-plan-val.highlight {
+    color: #2ecc71;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+/* 모달 액션 버튼 */
+.modal-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.modal-order-btn {
+    flex: 2;
+    padding: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    background: linear-gradient(145deg, #10b981, #059669);
+    border: 1px solid #34d399;
+    color: #ffffff;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.modal-order-btn:hover {
+    background: linear-gradient(145deg, #059669, #047857);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+    transform: translateY(-2px);
+}
+
+.modal-close-btn-bottom {
+    flex: 1;
+    padding: 14px;
+    font-size: 0.95rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #bbb;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.modal-close-btn-bottom:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+/* 2. Light Theme Overrides (밝은 테마) */
+body.light-theme {
+    color: #2d3748;
+    background: radial-gradient(circle at 10% 20%, rgba(46, 204, 113, 0.12), transparent 60%),
+                radial-gradient(circle at 90% 80%, rgba(52, 152, 219, 0.12), transparent 50%),
+                linear-gradient(135deg, #f1f5f9, #e2e8f0);
+}
+
+body.light-theme .obsidian-panel {
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+
+body.light-theme .top-header {
+    background: rgba(255, 255, 255, 0.92);
+    border-bottom: 1px solid rgba(46, 204, 113, 0.35);
+}
+
+body.light-theme .top-header h1 span {
+    color: #64748b;
+    -webkit-text-fill-color: #64748b;
+}
+
+body.light-theme .ticker-wrap {
+    background: #ffffff;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    color: #334155;
+}
+
+body.light-theme .panel-header {
+    background: rgba(241, 245, 249, 0.9);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    color: #0d9488;
+}
+
+body.light-theme .hts-table th {
+    background: rgba(248, 250, 252, 0.95);
+    color: #64748b;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .hts-table td {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    color: #1e293b;
+}
+
+body.light-theme .hts-table tr:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+body.light-theme .control-box {
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(0, 0, 0, 0.07);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+body.light-theme .control-box h3 {
+    color: #0d9488;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .divider {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .input-group input,
+body.light-theme #search-symbol,
+body.light-theme #input-trade-budget {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-theme .input-group input:focus,
+body.light-theme #search-symbol:focus,
+body.light-theme #input-trade-budget:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.25) !important;
+}
+
+body.light-theme .quote-board {
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+body.light-theme .quote-header {
+    color: #1e293b;
+}
+
+body.light-theme .account-budget-card {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9)) !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+}
+
+body.light-theme .budget-inner-card {
+    background: rgba(248, 250, 252, 0.9) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+body.light-theme .budget-highlight-card {
+    background: rgba(240, 253, 244, 0.9) !important;
+    border: 1px solid rgba(16, 185, 129, 0.25) !important;
+}
+
+body.light-theme .budget-input {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-theme .budget-input:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.25) !important;
+}
+
+body.light-theme #center-account-title {
+    color: #64748b !important;
+}
+
+body.light-theme #center-account-balance {
+    color: #0f172a !important;
+}
+
+body.light-theme .balance {
+    color: #0f172a;
+    text-shadow: none;
+}
+
+body.light-theme .account-summary h3,
+body.light-theme .positions-container h3 {
+    color: #64748b;
+}
+
+body.light-theme .account-summary {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .empty-msg {
+    color: #94a3b8;
+}
+
+body.light-theme #positions-list li {
+    background: rgba(241, 245, 249, 0.8) !important;
+    border: 1px solid rgba(0, 0, 0, 0.06) !important;
+    color: #1e293b !important;
+}
+
+body.light-theme .obsidian-btn {
+    background: linear-gradient(145deg, #f8fafc, #edf2f7);
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .obsidian-btn.glow:hover {
+    background: linear-gradient(145deg, #e2e8f0, #cbd5e1);
+    border-color: #10b981;
+    color: #0f172a;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+body.light-theme .obsidian-btn.stop {
+    background: linear-gradient(145deg, #fef2f2, #fee2e2);
+    border-color: #fca5a5;
+    color: #dc2626;
+}
+
+body.light-theme .obsidian-btn.stop:hover {
+    background: linear-gradient(145deg, #fee2e2, #fecaca);
+    border-color: #ef4444;
+    color: #b91c1c;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+}
+
+body.light-theme .buy-btn {
+    background: linear-gradient(145deg, #fef2f2, #fee2e2);
+    border-color: #fca5a5;
+    color: #dc2626;
+}
+
+body.light-theme .buy-btn:hover {
+    background: linear-gradient(145deg, #fee2e2, #fecaca);
+    border-color: #ef4444;
+    color: #b91c1c;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+}
+
+body.light-theme .sell-btn {
+    background: linear-gradient(145deg, #eff6ff, #dbeafe);
+    border-color: #93c5fd;
+    color: #2563eb;
+}
+
+body.light-theme .sell-btn:hover {
+    background: linear-gradient(145deg, #dbeafe, #bfdbfe);
+    border-color: #3b82f6;
+    color: #1d4ed8;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+}
+
+body.light-theme .modify-btn {
+    background: linear-gradient(145deg, #fffbeb, #fef3c7);
+    border-color: #fde68a;
+    color: #d97706;
+}
+
+body.light-theme .modify-btn:hover {
+    background: linear-gradient(145deg, #fef3c7, #fde68a);
+    border-color: #f59e0b;
+    color: #b45309;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+}
+
+body.light-theme .budget-pct-btn {
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid #cbd5e1;
+    color: #475569;
+}
+
+body.light-theme .budget-pct-btn:hover {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #0f172a;
+}
+
+body.light-theme .budget-pct-btn.active {
+    background: rgba(16, 185, 129, 0.18) !important;
+    border-color: #10b981 !important;
+    color: #047857 !important;
+    font-weight: bold !important;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+}
+
+body.light-theme .theme-floating-btn {
+    background: rgba(255, 255, 255, 0.92);
+    color: #d97706;
+    border: 1px solid rgba(217, 119, 6, 0.4);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 12px rgba(217, 119, 6, 0.2);
+}
+
+body.light-theme .theme-floating-btn:hover {
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18), 0 0 20px rgba(217, 119, 6, 0.4);
+    border-color: #d97706;
+}
+
+/* Light Theme Overrides for Recommendation Components */
+body.light-theme .find-candidates-bar {
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .find-candidates-desc {
+    color: #64748b;
+}
+
+body.light-theme .recommendations-container {
+    border-top: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+body.light-theme .rec-status-badge {
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+body.light-theme .rec-refresh-btn {
+    background: #f1f5f9;
+    color: #475569;
+    border-color: #cbd5e1;
+}
+body.light-theme .rec-refresh-btn:hover {
+    color: #0f172a;
+    border-color: #10b981;
+}
+
+body.light-theme .rec-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme .rec-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    border-color: #10b981;
+}
+
+body.light-theme .rec-card.rank-1 {
+    border-color: #fbbf24;
+    box-shadow: 0 4px 18px rgba(245, 158, 11, 0.15);
+}
+
+body.light-theme .rec-rank-badge {
+    background: #f1f5f9;
+    color: #334155;
+}
+
+body.light-theme .rec-score-badge {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+}
+
+body.light-theme .rec-score-title {
+    color: #64748b;
+}
+
+body.light-theme .rec-score-val {
+    color: #059669;
+}
+
+body.light-theme .rec-stock-main {
+    border-bottom: 1px solid #f1f5f9;
+}
+
+body.light-theme .rec-stock-name {
+    color: #0f172a;
+}
+
+body.light-theme .rec-stock-code {
+    color: #94a3b8;
+}
+
+body.light-theme .rec-stock-price {
+    color: #0f172a;
+}
+
+body.light-theme .rec-budget-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+body.light-theme .rec-budget-label {
+    color: #64748b;
+}
+
+body.light-theme .rec-budget-val {
+    color: #1e293b;
+}
+
+body.light-theme .rec-budget-val.rec-highlight {
+    color: #059669;
+}
+
+body.light-theme .rec-budget-val.rec-sub {
+    color: #64748b;
+}
+
+body.light-theme .rec-progress-track {
+    background: #e2e8f0;
+}
+
+body.light-theme .rec-reason-box {
+    background: #f8fafc;
+    border-left: 3px solid #10b981;
+}
+
+body.light-theme .rec-reason-title {
+    color: #059669;
+}
+
+body.light-theme .rec-reason-text {
+    color: #334155;
+}
+
+body.light-theme .rec-apply-btn {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #059669;
+}
+
+body.light-theme .rec-apply-btn:hover {
+    background: #d1fae5;
+    border-color: #10b981;
+    color: #047857;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+}
+
+/* Light Theme Overrides for Spotlight Modal */
+body.light-theme .rec-modal-overlay {
+    background: rgba(15, 23, 42, 0.65);
+}
+
+body.light-theme .rec-modal-card {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 25px rgba(16, 185, 129, 0.15);
+    color: #0f172a;
+}
+
+body.light-theme .rec-modal-close-btn {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+body.light-theme .rec-modal-close-btn:hover {
+    background: #fee2e2;
+    border-color: #f87171;
+    color: #dc2626;
+}
+
+body.light-theme .modal-header-section {
+    border-bottom: 1px solid #e2e8f0;
+}
+
+body.light-theme .modal-rank-badge {
+    background: #f1f5f9;
+    color: #334155;
+}
+
+body.light-theme .modal-score-badge {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+}
+
+body.light-theme .modal-score-val {
+    color: #059669;
+}
+
+body.light-theme .modal-stock-hero {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+body.light-theme .modal-stock-name {
+    color: #0f172a;
+}
+
+body.light-theme .modal-stock-code {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+body.light-theme .modal-price {
+    color: #0f172a;
+}
+
+body.light-theme .modal-score-item {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+body.light-theme .modal-score-label {
+    color: #64748b;
+}
+
+body.light-theme .modal-score-value {
+    color: #059669;
+}
+
+body.light-theme .modal-reason-box {
+    background: #f8fafc;
+    border-left: 4px solid #10b981;
+}
+
+body.light-theme .modal-reason-title {
+    color: #059669;
+}
+
+body.light-theme .modal-reason-text {
+    color: #334155;
+}
+
+body.light-theme .modal-budget-plan {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+body.light-theme .modal-plan-title {
+    color: #059669;
+}
+
+body.light-theme .modal-plan-label {
+    color: #64748b;
+}
+
+body.light-theme .modal-plan-val {
+    color: #1e293b;
+}
+
+body.light-theme .modal-plan-val.highlight {
+    color: #059669;
+}
+
+body.light-theme .modal-close-btn-bottom {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+body.light-theme .modal-close-btn-bottom:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>AI VibeTrading HTS</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="obsidian-panel top-header">
+        <h1>AI VibeTrading HTS <span>Pro Dashboard</span></h1>
+        <div class="status-indicator">
+            <span id="bot-status" class="status-dot off"></span>
+            <span id="bot-status-text">Bot Offline</span>
+        </div>
+    </header>
+
+    <!-- 상단 티커 테이프 -->
+    <div class="ticker-wrap obsidian-panel">
+        <div class="ticker-move" id="ticker-content">
+            <!-- JS로 데이터 채워짐 -->
+        </div>
+    </div>
+
+    <div class="hts-container">
+        <!-- 좌측 패널: 관심종목 리스트 -->
+        <aside class="obsidian-panel hts-panel">
+            <div class="panel-header">관심종목 (Top 20)</div>
+            <div class="table-container">
+                <table class="hts-table">
+                    <thead>
+                        <tr>
+                            <th>종목명</th>
+                            <th>현재가</th>
+                            <th>등락률</th>
+                        </tr>
+                    </thead>
+                    <tbody id="watchlist-body">
+                        <!-- JS로 채워짐 -->
+                    </tbody>
+                </table>
+            </div>
+        </aside>
+
+        <!-- 중앙 패널: 트레이딩 데스크 (GUI API 제어) -->
+        <main class="obsidian-panel hts-panel center-panel">
+            <div class="panel-header">트레이딩 데스크 (API 컨트롤)</div>
+            <div class="center-content scrollable">
+                <div class="bot-controls">
+                    <button class="obsidian-btn glow" onclick="startBot()">자동매매 시작</button>
+                    <button class="obsidian-btn stop" onclick="stopBot()">자동매매 정지</button>
+                </div>
+                
+                <hr class="divider">
+
+                <div class="control-grid">
+                    <!-- 수동 주문 -->
+                    <div class="control-box">
+                        <h3>1. 수동 주문 (Buy / Sell)</h3>
+                        <div class="input-group">
+                            <input type="text" id="order-symbol" placeholder="종목코드 (예: 005930)">
+                            <input type="number" id="order-price" placeholder="주문 단가 (예: 75000)">
+                            <input type="number" id="order-qty" placeholder="수량 (예: 10)">
+                        </div>
+                        <div class="btn-group">
+                            <button class="obsidian-btn buy-btn" onclick="submitBuy()">매수 (Buy)</button>
+                            <button class="obsidian-btn sell-btn" onclick="submitSell()">매도 (Sell)</button>
+                        </div>
+                    </div>
+
+                    <!-- 주문 관리 -->
+                    <div class="control-box">
+                        <h3>2. 주문 정정 / 취소 (Modify / Cancel)</h3>
+                        <div class="input-group">
+                            <input type="text" id="manage-order-id" placeholder="주문 ID (예: ord_b1234)">
+                            <input type="number" id="manage-new-price" placeholder="정정 단가">
+                        </div>
+                        <div class="btn-group">
+                            <button class="obsidian-btn modify-btn" onclick="modifyOrder()">주문 정정</button>
+                            <button class="obsidian-btn stop" onclick="cancelOrder()">주문 취소</button>
+                        </div>
+                    </div>
+
+                    <!-- 봇 설정 -->
+                    <div class="control-box">
+                        <h3>3. 실시간 봇 설정 (Bot Settings)</h3>
+                        <div class="input-group">
+                            <input type="number" step="0.1" id="bot-setting-k" placeholder="돌파계수 K 변경 (예: 0.6)">
+                        </div>
+                        <div class="btn-group">
+                            <button class="obsidian-btn modify-btn" style="width:100%" onclick="updateSettings()">설정 적용 (Apply)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 우측 패널: 계좌 및 보유종목 -->
+        <aside class="obsidian-panel hts-panel right-panel">
+            <div class="panel-header">내 계좌 및 포지션</div>
+            <div class="account-summary">
+                <h3>총 평가 자산</h3>
+                <p class="balance" id="account-balance">0 원</p>
+            </div>
+            <div class="positions-container">
+                <h3>보유 종목</h3>
+                <ul id="positions-list">
+                    <li class="empty-msg">보유 종목이 없습니다.</li>
+                </ul>
+            </div>
+        </aside>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

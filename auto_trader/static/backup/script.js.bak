@@ -1,0 +1,61 @@
+async function fetchDashboardData() {
+    try {
+        const balRes = await fetch('/api/v1/account/balance');
+        const balData = await balRes.json();
+        document.getElementById('account-balance').innerText = balData.balance.toLocaleString() + ' 원';
+
+        const sysRes = await fetch('/');
+        const sysData = await sysRes.json();
+        const dot = document.getElementById('bot-status');
+        const txt = document.getElementById('bot-status-text');
+        
+        if (sysData.bot_running) {
+            dot.className = 'status-dot on';
+            txt.innerText = 'Bot Running';
+        } else {
+            dot.className = 'status-dot off';
+            txt.innerText = 'Bot Offline';
+        }
+
+    } catch (e) {
+        console.error('Error fetching data:', e);
+    }
+}
+
+async function fetchTickerTape() {
+    try {
+        const res = await fetch('/api/v1/market/ticker-tape');
+        const data = await res.json();
+        const container = document.getElementById('ticker-content');
+        
+        let html = '';
+        data.tickers.forEach(item => {
+            const colorClass = item.change > 0 ? 'up' : (item.change < 0 ? 'down' : '');
+            const sign = item.change > 0 ? '+' : '';
+            html += `<div class="ticker-item">
+                <span>${item.name}(${item.symbol})</span>
+                <strong>${item.price.toLocaleString()}</strong>
+                <span class="${colorClass}">${sign}${item.change}%</span>
+            </div>`;
+        });
+        
+        container.innerHTML = html + html; // 반복을 위해 2배
+    } catch (e) {
+        console.error('Ticker fetch error:', e);
+    }
+}
+
+async function startBot() {
+    await fetch('/api/v1/bot/start', { method: 'POST' });
+    fetchDashboardData();
+}
+
+async function stopBot() {
+    await fetch('/api/v1/bot/stop', { method: 'POST' });
+    fetchDashboardData();
+}
+
+fetchDashboardData();
+fetchTickerTape();
+setInterval(fetchDashboardData, 3000);
+setInterval(fetchTickerTape, 10000);

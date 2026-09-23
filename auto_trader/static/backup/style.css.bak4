@@ -1,0 +1,96 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&display=swap');
+
+body {
+    margin: 0; padding: 0; font-family: 'Noto Sans KR', sans-serif; color: #e0e0e0;
+    background: radial-gradient(circle at 10% 20%, rgba(46, 204, 113, 0.15), transparent 60%),
+                radial-gradient(circle at 90% 80%, rgba(26, 188, 156, 0.15), transparent 50%),
+                linear-gradient(135deg, #0f171e, #1a252c);
+    background-attachment: fixed; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+}
+
+.obsidian-panel {
+    background: rgba(15, 20, 25, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.15);
+}
+
+.top-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; border-radius: 0; border-bottom: 1px solid rgba(46, 204, 113, 0.3); }
+.top-header h1 { margin: 0; font-size: 1.4rem; background: linear-gradient(90deg, #2ecc71, #1abc9c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.top-header h1 span { font-size: 0.9rem; color: #888; -webkit-text-fill-color: #888; margin-left: 10px; }
+
+.status-indicator { display: flex; align-items: center; gap: 10px; font-weight: bold; }
+.status-dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 8px rgba(0,0,0,0.5); }
+.status-dot.on { background: #2ecc71; box-shadow: 0 0 10px #2ecc71; }
+.status-dot.off { background: #e74c3c; box-shadow: 0 0 10px #e74c3c; }
+
+/* 상단 티커 */
+.ticker-wrap {
+    width: 100%; height: 40px; overflow: hidden; display: flex; align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.05); border-radius: 0; background: #0f1519; flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+.ticker-move { display: flex; white-space: nowrap; animation: tickerLeftToRight 60s linear infinite; }
+.ticker-item { padding: 0 40px; font-size: 0.95rem; display: flex; align-items: center; gap: 12px; }
+@keyframes tickerLeftToRight { 0% { transform: translateX(-100%); } 100% { transform: translateX(100vw); } }
+
+.hts-container { display: grid; grid-template-columns: 320px 1fr 320px; gap: 15px; padding: 15px; flex: 1; overflow: hidden; margin-bottom: 10px; }
+.hts-panel { border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
+.panel-header { background: rgba(0,0,0,0.4); padding: 12px 15px; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.05); color: #2ecc71; }
+
+.table-container { flex: 1; overflow-y: auto; }
+.hts-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.hts-table th, .hts-table td { padding: 10px 12px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.hts-table th { color: #888; background: rgba(0,0,0,0.6); position: sticky; top: 0; }
+.hts-table th:first-child, .hts-table td:first-child { text-align: left; }
+.hts-table tr:hover { background: rgba(255,255,255,0.05); }
+
+.up { color: #e74c3c !important; }
+.down { color: #3498db !important; }
+
+/* 중앙 패널 & Form UI */
+.center-content { padding: 20px; display: flex; flex-direction: column; height: 100%; gap: 20px; }
+.scrollable { overflow-y: auto; }
+.bot-controls { display: flex; gap: 15px; justify-content: center; }
+.divider { border: 0; height: 1px; background: rgba(255,255,255,0.05); margin: 0; width: 100%; }
+
+.control-grid { display: grid; gap: 15px; grid-template-columns: 1fr; }
+.control-box { background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
+.control-box h3 { margin-top: 0; font-size: 1rem; color: #2ecc71; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 15px;}
+.input-group { display: flex; gap: 10px; margin-bottom: 15px; }
+.input-group input { 
+    flex: 1; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); 
+    padding: 10px; border-radius: 6px; color: #fff; outline: none; transition: 0.3s;
+}
+.input-group input:focus { border-color: #2ecc71; box-shadow: 0 0 8px rgba(46, 204, 113, 0.4); }
+.btn-group { display: flex; gap: 10px; }
+.btn-group button { flex: 1; padding: 12px; font-size: 0.95rem; }
+
+/* Buttons */
+.obsidian-btn {
+    border-radius: 8px; cursor: pointer; font-weight: bold;
+    background: linear-gradient(145deg, #2c3e50, #1a252f); border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e0e0e0; box-shadow: 3px 3px 6px rgba(0,0,0,0.4), inset 1px 1px 2px rgba(255,255,255,0.1);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.obsidian-btn.glow:hover { background: linear-gradient(145deg, #34495e, #2c3e50); box-shadow: 0 0 15px rgba(46, 204, 113, 0.6); border-color: #2ecc71; transform: translateY(-2px); color: #fff; }
+.obsidian-btn.stop:hover { background: linear-gradient(145deg, #34495e, #2c3e50); box-shadow: 0 0 15px rgba(231, 76, 60, 0.6); border-color: #e74c3c; transform: translateY(-2px); color: #fff; }
+/* 한국식 매수(빨강), 매도(파랑) 컬러 오버라이드 */
+.buy-btn { border-color: rgba(231,76,60,0.5); color: #ff7675; }
+.buy-btn:hover { background: linear-gradient(145deg, #4a1919, #2d0f0f); border-color: #e74c3c; box-shadow: 0 0 15px rgba(231,76,60,0.5); color: #fff; transform: translateY(-2px);}
+.sell-btn { border-color: rgba(52,152,219,0.5); color: #74b9ff; }
+.sell-btn:hover { background: linear-gradient(145deg, #193a4a, #0f252d); border-color: #3498db; box-shadow: 0 0 15px rgba(52,152,219,0.5); color: #fff; transform: translateY(-2px);}
+.modify-btn { border-color: rgba(241,196,15,0.5); color: #ffeaa7; }
+.modify-btn:hover { background: linear-gradient(145deg, #4a3e19, #2d250f); border-color: #f1c40f; box-shadow: 0 0 15px rgba(241,196,15,0.5); color:#fff; transform: translateY(-2px);}
+
+/* 계좌 영역 */
+.account-summary { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.account-summary h3, .positions-container h3 { margin: 0 0 10px 0; font-size: 0.9rem; color: #888; }
+.balance { font-size: 2rem; font-weight: 700; margin: 0; color: #fff; text-shadow: 0 0 10px rgba(46, 204, 113, 0.3); }
+.positions-container { padding: 20px; flex: 1; overflow-y: auto; }
+#positions-list { list-style: none; padding: 0; margin: 0; }
+.empty-msg { color: #555; font-style: italic; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(46, 204, 113, 0.5); }
