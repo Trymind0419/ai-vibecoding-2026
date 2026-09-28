@@ -114,9 +114,25 @@ class NamuhAutoTrader:
                         data = nhplug.call('/krstock/quote/v1/currentPrice', {'iem_cd': t["symbol"], 'market_cd': 'KRX'})
                         output = data.get('Output_0', {}) if isinstance(data, dict) else {}
                         prpr = output.get('stck_prpr')
+                        prev = output.get('stck_prdy_clpr')  # 전일종가 (기준가)
                         ctrt = output.get('prdy_ctrt')
                         price_val = int(prpr) if (prpr is not None and str(prpr).strip() != "") else t.get("price", 0)
-                        change_val = float(ctrt) if (ctrt is not None and str(ctrt).strip() != "") else 0.0
+                        prev_val = int(prev) if (prev is not None and str(prev).strip() != "") else 0
+                        raw_ctrt = float(ctrt) if (ctrt is not None and str(ctrt).strip() != "") else 0.0
+
+                        # 나무증권 OpenAPI의 prdy_ctrt는 부호 없는 절대값이므로 전일종가 대비 등락 부호 결정
+                        if prev_val > 0 and price_val > 0:
+                            if price_val < prev_val:
+                                change_val = -abs(raw_ctrt)
+                            elif price_val > prev_val:
+                                change_val = abs(raw_ctrt)
+                            else:
+                                change_val = 0.0
+                        elif raw_ctrt != 0.0:
+                            change_val = raw_ctrt
+                        else:
+                            change_val = t.get("change", 0.0)
+
                         quotes.append({
                             "name": output.get("iem_nm", t["name"]).replace("*", "") if output.get("iem_nm") else t["name"],
                             "symbol": t["symbol"],

@@ -115,11 +115,24 @@ class TradingBot:
                 )
                 out = data.get('Output_0', {}) if isinstance(data, dict) else {}
                 cur = int(out.get('stck_prpr') or 0)
+                prev = int(out.get('stck_prdy_clpr') or 0)
                 opn = int(out.get('stck_oprc') or cur)
                 hgh = int(out.get('stck_hgpr') or cur)
                 low = int(out.get('stck_lwpr') or cur)
                 nm  = out.get('iem_nm', symbol).replace("*", "").strip()
-                chg = float(out.get('prdy_ctrt') or 0.0)
+                raw_ctrt = float(out.get('prdy_ctrt') or 0.0)
+                
+                # 전일 종가 기준 상승/하락 부호 반영
+                if prev > 0 and cur > 0:
+                    if cur < prev:
+                        chg = -abs(raw_ctrt)
+                    elif cur > prev:
+                        chg = abs(raw_ctrt)
+                    else:
+                        chg = 0.0
+                else:
+                    chg = raw_ctrt
+
                 if cur > 0:
                     return {"symbol": symbol, "name": nm, "price": cur,
                             "open": opn, "high": hgh, "low": low, "change": chg}

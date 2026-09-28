@@ -1,4 +1,3 @@
-let currentAccountBalance = 10000000;
 let currentAccountBalance = 10000000;   // 총자산 (현금 + 주식 평가액) — 대시보드 헤드라인
 let currentCashBalance = 10000000;       // 가용 현금 — "전액" 버튼 및 예산 계산 기준
 let currentRecommendationBudget = 2000000;
@@ -11,7 +10,6 @@ async function fetchDashboardData() {
         const balRes = await fetch('/api/v1/account/balance');
         const balData = await balRes.json();
         
-        currentAccountBalance = balData.balance || 0;
         currentAccountBalance = balData.balance || 0;   // 총자산
         currentCashBalance    = balData.cash    || currentAccountBalance; // 가용 현금
         currentTradingMode = (balData.trading_mode || 'PAPER').toUpperCase();
@@ -22,7 +20,6 @@ async function fetchDashboardData() {
             currentRecommendationBudget = balData.recommended_budget;
         }
 
-        // 잔고 표시 업데이트 (우측 패널 및 중앙 카드)
         // 총자산 표시 (우측 패널 및 중앙 카드)
         const formattedBal = currentAccountBalance.toLocaleString() + ' 원';
         const rightBal = document.getElementById('account-balance');
@@ -44,11 +41,8 @@ async function fetchDashboardData() {
             inputBudget.value = currentRecommendationBudget;
         }
 
-        // 활성 예산 비율 버튼 동기화
         // 활성 예산 비율 버튼 동기화 — 기준: 가용 현금(currentCashBalance)
         let initialPct = null;
-        if (currentAccountBalance > 0 && currentRecommendationBudget > 0) {
-            const pct = Math.round((currentRecommendationBudget / currentAccountBalance) * 100);
         if (currentCashBalance > 0 && currentRecommendationBudget > 0) {
             const pct = Math.round((currentRecommendationBudget / currentCashBalance) * 100);
             if ([10, 20, 30, 50, 100].includes(pct)) {
@@ -690,11 +684,8 @@ function syncActiveBudgetButton(targetPct) {
 }
 
 async function setBudgetPercent(pct) {
-    if (!currentAccountBalance || currentAccountBalance <= 0) return;
     if (!currentCashBalance || currentCashBalance <= 0) return;
     syncActiveBudgetButton(pct);
-    const newBudget = Math.floor(currentAccountBalance * (pct / 100));
-    await updateBudget(newBudget, `${pct}%`, pct);
     const newBudget = Math.floor(currentCashBalance * (pct / 100));
     await updateBudget(newBudget, `잔고의 ${pct}%`, pct);
 }
@@ -706,14 +697,14 @@ async function applyCustomBudget() {
     if (isNaN(val) || val <= 0) return alert('올바른 금액을 입력하세요.');
     
     let matchedPct = null;
-    if (currentAccountBalance > 0) {
-        const calculatedPct = Math.round((val / currentAccountBalance) * 100);
+    if (currentCashBalance > 0) {
+        const calculatedPct = Math.round((val / currentCashBalance) * 100);
         if ([10, 20, 30, 50, 100].includes(calculatedPct)) {
             matchedPct = calculatedPct;
         }
     }
     syncActiveBudgetButton(matchedPct);
-    const ratioLabel = matchedPct ? `${matchedPct}%` : (currentAccountBalance > 0 ? `${Math.round((val/currentAccountBalance)*100)}%` : '직접지정');
+    const ratioLabel = matchedPct ? `${matchedPct}%` : (currentCashBalance > 0 ? `${Math.round((val/currentCashBalance)*100)}%` : '직접지정');
     await updateBudget(val, ratioLabel, matchedPct);
 }
 
