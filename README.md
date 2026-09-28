@@ -1,4 +1,4 @@
-# ai-vibecoding-2026
+# ****ai-vibecoding-2026
 
 바이브코딩 리포지토리
 
@@ -46,8 +46,8 @@ AI에게 코딩을 시키자, 제대로!
 - 원샷 프롬프트 : 적어도 한줄의 요구사항을 작성해서 바이브코딩
 - 퓨샷 프롬프트 : PRD 작성을 통한 바이브코딩
 
-
 #### 프롬프트 사용법
+
 - 이미지를 캡쳐해서 복사/붙여넣기 후 프롬프트 사용
 - 특정 소스코드를 선택한 뒤 우클릭으로 `Add to Codex Thread` 선택 후 프롬프트 사용
 
@@ -86,15 +86,16 @@ AI에게 코딩을 시키자, 제대로!
 
   - `pip install -r requirements.txt` 로 전부 설치
 
-
-
 #### favicon ico 작업
+
 - flaticon.com 에서 원하는 이미지 png 다운로드
 - https://covertio.com 에서 png를 ico로 변환. 다운로드
 - favicon.ico로 이름변경
 - static 폴더에 복사
 - index.html에 아래코드 추가
+
 ```html
 <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
 ```
+
 - ![](assets/20260923_122735_image.png)
