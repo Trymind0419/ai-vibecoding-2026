@@ -253,7 +253,10 @@
             <div id="portfolio-pnl-section" class="portfolio-pnl-section" style="display:none; margin-top: 12px; padding: 12px 14px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
                     <h4 style="margin:0; font-size:0.85rem; color:#aaa; font-weight:500;">📈 실시간 포트폴리오 수익률</h4>
-                    <span id="pnl-update-time" style="font-size:0.7rem; color:#555;"></span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <button onclick="triggerRebalance40Pct()" style="background:rgba(230, 126, 34, 0.2); border:1px solid rgba(230, 126, 34, 0.5); color:#e67e22; font-size:0.68rem; font-weight:600; padding:2px 6px; border-radius:4px; cursor:pointer;" title="40% 초과 보유 종목을 40% 한도까지 즉시 매도">40% 비중 리밸런싱</button>
+                        <span id="pnl-update-time" style="font-size:0.7rem; color:#555;"></span>
+                    </div>
                 </div>
                 <!-- 합산 수익률 -->
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
@@ -278,7 +281,79 @@
                     <li class="empty-msg">보유 종목이 없습니다.</li>
                 </ul>
             </div>
+            <!-- 영구 보존 매매 거래일지 및 누적 성과 섹션 (DB 연동) -->
+            <div id="trades-journal-section" style="margin-top: 14px; padding: 12px 14px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                    <div onclick="openAllTradesModal()" style="display:flex; align-items:center; gap:6px; cursor:pointer; padding:3px 6px; border-radius:5px; background:rgba(255,255,255,0.04); transition:all 0.2s ease;" title="클릭 시 전체 거래일지 대형 팝업 열기" onmouseover="this.style.background='rgba(52,152,219,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+                        <h4 style="margin:0; font-size:0.85rem; color:#3498db; font-weight:700;">💾 매매 결과 & 거래일지 (DB 영구)</h4>
+                        <span style="font-size:0.75rem; color:#3498db; border:1px solid rgba(52,152,219,0.4); border-radius:3px; padding:0 4px;">🔍 크게보기</span>
+                    </div>
+                    <button onclick="resetPaperAccount()" style="background:transparent; border:1px solid #555; color:#888; font-size:0.7rem; border-radius:4px; padding:2px 6px; cursor:pointer;" title="가상계좌 1,000만원으로 초기화">초기화</button>
+                </div>
+                <!-- 누적 성과 요약 배지 -->
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px; text-align:center;">
+                    <div style="background:rgba(0,0,0,0.25); padding:6px 4px; border-radius:6px; border:1px solid rgba(255,255,255,0.04);">
+                        <div style="font-size:0.65rem; color:#888;">총 실현손익</div>
+                        <div id="journal-total-pnl" style="font-size:0.85rem; font-weight:bold; color:#d1d4dc;">0 원</div>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.25); padding:6px 4px; border-radius:6px; border:1px solid rgba(255,255,255,0.04);">
+                        <div style="font-size:0.65rem; color:#888;">승률</div>
+                        <div id="journal-win-rate" style="font-size:0.85rem; font-weight:bold; color:#2ecc71;">0.0%</div>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.25); padding:6px 4px; border-radius:6px; border:1px solid rgba(255,255,255,0.04);">
+                        <div style="font-size:0.65rem; color:#888;">거래 횟수</div>
+                        <div id="journal-total-trades" style="font-size:0.85rem; font-weight:bold; color:#d1d4dc;">0건</div>
+                    </div>
+                </div>
+                <!-- 최근 청산 거래 내역 리스트 -->
+                <div style="font-size:0.75rem; color:#888; margin-bottom:4px;">최근 청산 완료 종목</div>
+                <div id="closed-trades-list" style="max-height: 350px; overflow-y: auto; padding-right: 2px;">
+                    <div style="font-size:0.75rem; color:#666; text-align:center; padding:10px;">청산된 거래 내역이 없습니다.</div>
+                </div>
+            </div>
         </aside>
+    </div>
+
+    
+    <!-- 거래 매수/매도 근거 팝업 모달 (Trade Reason Modal) -->
+    <div id="trade-reason-modal" class="rec-modal-overlay" onclick="closeTradeReasonModal(event)" style="display: none;">
+        <div class="rec-modal-card" onclick="event.stopPropagation()" style="max-width: 520px; border-color: rgba(52, 152, 219, 0.4); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(52, 152, 219, 0.25);">
+            <button type="button" class="rec-modal-close-btn" onclick="closeTradeReasonModal()" title="닫기 (ESC)">✕</button>
+            <div id="trade-reason-modal-body">
+                <!-- 동적으로 채워질 매수/매도 근거 내용 -->
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- 매매 결과 전체 거래일지 대형 팝업 모달 (All Trades Journal Full Modal) -->
+    <div id="all-trades-modal" class="rec-modal-overlay" onclick="closeAllTradesModal(event)" style="display: none;">
+        <div class="rec-modal-card" onclick="event.stopPropagation()" style="max-width: 780px; width: 92%; max-height: 85vh; border-color: rgba(46, 204, 113, 0.5); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(46, 204, 113, 0.25); display: flex; flex-direction: column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:14px; margin-bottom:14px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:1.3rem;">💾</span>
+                    <div>
+                        <h3 style="margin:0; font-size:1.2rem; color:#fff; font-weight:800;">실전 자동매매 체결 거래일지 (DB 영구보존)</h3>
+                        <div style="font-size:0.75rem; color:#888; margin-top:2px;">모든 과거 매수 및 매도 체결 내역과 실현손익을 상세 조회합니다.</div>
+                    </div>
+                </div>
+                <button type="button" class="rec-modal-close-btn" onclick="closeAllTradesModal()" title="닫기 (ESC)">✕</button>
+            </div>
+            
+            <!-- 모달 상단 종합 성과 요약 바 -->
+            <div id="all-trades-summary-bar" style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; text-align:center;">
+                <!-- JS로 동적 렌더링 -->
+            </div>
+
+            <!-- 스크롤 가능한 전체 거래 내역 테이블/카드 리스트 -->
+            <div id="all-trades-full-list" style="flex:1; overflow-y:auto; max-height: 55vh; padding-right: 4px;">
+                <!-- JS로 동적 렌더링 -->
+            </div>
+            
+            <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); text-align: center;">
+                <button onclick="closeAllTradesModal()" style="background:#2c3e50; border:none; color:#fff; padding:8px 30px; border-radius:6px; font-weight:600; font-size:0.85rem; cursor:pointer;">확인</button>
+            </div>
+        </div>
     </div>
 
     <!-- 추천 종목 상세 확대 모달 (Center Spotlight Zoom Modal) -->
@@ -297,6 +372,6 @@
         <span id="theme-label">Dark</span>
     </button>
 
-    <script src="script.js?v=5.1"></script>
+    <script src="script.js?v=11.0"></script>
 </body>
 </html>

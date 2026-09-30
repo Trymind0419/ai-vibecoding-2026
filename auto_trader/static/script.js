@@ -1,3 +1,18 @@
+const STOCK_NAME_MAP = {
+    '005930': '삼성전자',
+    '005935': '삼성전자우',
+    '000660': 'SK하이닉스',
+    '034020': '두산에너빌리티',
+    '005380': '현대차',
+    '000270': '기아',
+    '373220': 'LG에너지솔루션',
+    '035720': '카카오',
+    '035420': 'NAVER',
+    '012450': '한화에어로스페이스',
+    '329180': 'HD현대중공업',
+    '402340': 'SK스퀘어',
+    '207940': '삼성바이오로직스'
+};
 let currentAccountBalance = 10000000;   // 총자산 (현금 + 주식 평가액) — 대시보드 헤드라인
 let currentCashBalance = 10000000;       // 가용 현금 — "전액" 버튼 및 예산 계산 기준
 let currentRecommendationBudget = 2000000;
@@ -528,13 +543,15 @@ window.loadChart = function(symbol, name) {
     loadQuote(symbol, name);
 };
 
-// 초기화
+// 초기화 (DB 영구 보존 데이터 포함)
 fetchDashboardData();
 fetchMarketData();
 fetchPortfolioPnl();
+fetchTradeJournal();
 setInterval(fetchDashboardData, 10000);
 setInterval(fetchMarketData, 15000);
 setInterval(fetchPortfolioPnl, 5000);
+setInterval(fetchTradeJournal, 5000);
 
 // === 실시간 포트폴리오 수익률 ===
 async function fetchPortfolioPnl() {
@@ -582,9 +599,14 @@ async function fetchPortfolioPnl() {
                 const c = item.pnl > 0 ? '#ff6b6b' : (item.pnl < 0 ? '#3498db' : '#d1d4dc');
                 const sg = item.pnl > 0 ? '+' : '';
                 const nameDisplay = (item.name && item.name !== item.symbol) ? item.name : item.symbol;
+                const bReasonSafe = (item.buy_reason || 'AI 단타 포지션 진입').replace(/'/g, "\\'");
+                const nameSafe = nameDisplay.replace(/'/g, "\\'");
                 html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:7px 8px; margin-bottom:4px; background:rgba(0,0,0,0.2); border-radius:5px; border:1px solid rgba(255,255,255,0.04);">
                     <div style="flex:1; min-width:0;">
-                        <div style="font-size:0.82rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${nameDisplay}</div>
+                        <div style="font-size:0.82rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:5px;">
+                            <span>${nameDisplay}</span>
+                            <button onclick="showPositionReason('${item.symbol}', '${nameSafe}', ${item.qty}, ${item.buy_price}, ${item.current_price}, ${item.pnl}, ${item.pnl_pct}, '${bReasonSafe}', '${item.buy_time || ''}')" style="background:rgba(52, 152, 219, 0.2); border:1px solid rgba(52, 152, 219, 0.4); color:#3498db; font-size:0.68rem; font-weight:600; padding:1px 6px; border-radius:4px; cursor:pointer;" title="매수 근거 보기">근거</button>
+                        </div>
                         <div style="font-size:0.7rem; color:#888;">${item.symbol} · ${item.qty}주 · 매수 ${item.buy_price.toLocaleString()}원</div>
                     </div>
                     <div style="text-align:right; flex-shrink:0; margin-left:8px;">
@@ -1150,3 +1172,432 @@ initTheme();
 fetchBotLogs();
 
 
+// === 영구 보존 매매 거래일지 및 누적 성과 동기화 (DB) ===
+async function fetchTradeJournal() {
+    try {
+        const [sumRes, hisRes] = await Promise.all([
+            fetch('/api/v1/trades/summary'),
+            fetch('/api/v1/trades/history?limit=50')
+        ]);
+        if (!sumRes.ok || !hisRes.ok) return;
+        const summary = await sumRes.json();
+        const history = await hisRes.json();
+
+        const pnlEl = document.getElementById('journal-total-pnl');
+        const winEl = document.getElementById('journal-win-rate');
+        const tradesEl = document.getElementById('journal-total-trades');
+        const listEl = document.getElementById('closed-trades-list');
+
+        if (summary) {
+            if (pnlEl) {
+                const pnl = summary.total_realized_pnl || 0;
+                const sign = pnl > 0 ? '+' : '';
+                const color = pnl > 0 ? '#ff6b6b' : (pnl < 0 ? '#3498db' : '#d1d4dc');
+                pnlEl.innerText = `${sign}${pnl.toLocaleString()} 원`;
+                pnlEl.style.color = color;
+            }
+            if (winEl) {
+                const wr = summary.win_rate || 0.0;
+                winEl.innerText = `${wr.toFixed(1)}%`;
+                winEl.style.color = wr >= 50 ? '#2ecc71' : (wr > 0 ? '#e67e22' : '#888');
+            }
+            if (tradesEl) {
+                tradesEl.innerText = `${summary.total_trades || 0}건`;
+            }
+        }
+
+        if (listEl && history && history.closed_trades) {
+            const trades = history.closed_trades;
+            if (trades.length === 0) {
+                listEl.innerHTML = '<div style="font-size:0.75rem; color:#666; text-align:center; padding:10px;">청산된 거래 내역이 없습니다.</div>';
+            } else {
+                let html = '';
+                trades.forEach(t => {
+                    const pnl = t.realized_pnl != null ? t.realized_pnl : 0;
+                    const pnlPct = t.pnl_pct != null ? t.pnl_pct : (t.realized_pnl_pct != null ? t.realized_pnl_pct : 0);
+                    const sign = pnl > 0 ? '+' : '';
+                    const color = pnl > 0 ? '#ff6b6b' : (pnl < 0 ? '#3498db' : '#d1d4dc');
+                    const reason = t.exit_reason || 'MANUAL';
+                    const reasonBadge = reason === 'TAKE_PROFIT' ? '<span style="color:#ff6b6b; font-size:0.68rem; border:1px solid rgba(255,107,107,0.3); border-radius:3px; padding:1px 4px;">익절</span>'
+                        : reason === 'TRAILING_STOP' ? '<span style="color:#f39c12; font-size:0.68rem; border:1px solid rgba(243,156,18,0.3); border-radius:3px; padding:1px 4px;">트레일링</span>'
+                        : reason === 'STOP_LOSS' ? '<span style="color:#3498db; font-size:0.68rem; border:1px solid rgba(52,152,219,0.3); border-radius:3px; padding:1px 4px;">손절</span>'
+                        : reason === 'REBALANCE_40PCT' ? '<span style="color:#e67e22; font-size:0.68rem; border:1px solid rgba(230,126,34,0.4); border-radius:3px; padding:1px 4px;">40%리밸런싱</span>'
+                        : '<span style="color:#aaa; font-size:0.68rem; border:1px solid rgba(255,255,255,0.2); border-radius:3px; padding:1px 4px;">수동</span>';
+                    
+                    const timeRaw = t.sell_time || t.exit_time || '';
+                    const timeStr = timeRaw ? (timeRaw.indexOf(' ') !== -1 ? timeRaw.split(' ')[1] : (timeRaw.indexOf('T') !== -1 ? timeRaw.split('T')[1].substring(0,8) : timeRaw)) : '';
+                    const buyP = t.buy_price != null ? t.buy_price : (t.entry_price != null ? t.entry_price : 0);
+                    const sellP = t.sell_price != null ? t.sell_price : (t.exit_price != null ? t.exit_price : 0);
+                    
+                    // 총금액 계산: 매도 체결 총액 (revenue_amt)
+                    const totalAmt = t.revenue_amt != null ? t.revenue_amt : (sellP * t.qty);
+                    
+                    // 종목명이 메인으로 뜨도록 매핑 및 강조
+                    const resolvedName = (t.name && t.name !== t.symbol) ? t.name : (STOCK_NAME_MAP[t.symbol] || t.symbol);
+
+                    const bReasonSafe = (t.buy_reason || 'AI 단타 매수 체결').replace(/'/g, "\\'");
+                    const sReasonSafe = (t.sell_reason || reason).replace(/'/g, "\\'");
+                    const nameSafe = resolvedName.replace(/'/g, "\\'");
+                    
+                    html += `<div style="padding:8px 10px; margin-bottom:6px; background:rgba(0,0,0,0.28); border-radius:6px; border:1px solid rgba(255,255,255,0.06); transition:background 0.2s ease;">
+                        <!-- 상단: 메인 종목명 + 근거버튼 + 청산뱃지 + 손익/수익률 -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                                <strong style="font-size:0.88rem; color:#fff; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${resolvedName}</strong>
+                                <span style="font-size:0.7rem; color:#777;">(${t.symbol})</span>
+                                ${reasonBadge}
+                                <button onclick="showClosedTradeReason('${t.symbol}', '${nameSafe}', ${t.qty}, ${buyP}, ${sellP}, ${pnl}, ${pnlPct}, '${bReasonSafe}', '${sReasonSafe}', '${timeRaw}')" style="background:rgba(46, 204, 113, 0.15); border:1px solid rgba(46, 204, 113, 0.4); color:#2ecc71; font-size:0.65rem; font-weight:600; padding:1px 5px; border-radius:3px; cursor:pointer;" title="매수 및 매도 근거 보기">근거</button>
+                            </div>
+                            <div style="text-align:right; flex-shrink:0;">
+                                <span style="font-size:0.85rem; font-weight:800; color:${color};">${sign}${pnl.toLocaleString()}원</span>
+                                <span style="font-size:0.75rem; font-weight:700; color:${color}; margin-left:4px;">(${sign}${Number(pnlPct).toFixed(2)}%)</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 하단: 매수가 / 매도가 / 수량 / 총금액 / 체결시간 -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; color:#999; border-top:1px dashed rgba(255,255,255,0.06); padding-top:4px;">
+                            <div>
+                                <span>매수 <strong>${buyP.toLocaleString()}원</strong> → 매도 <strong>${sellP.toLocaleString()}원</strong></span>
+                                <span style="color:#666; margin:0 3px;">|</span>
+                                <span style="color:#d1d4dc;"><strong>${t.qty}주</strong></span>
+                            </div>
+                            <div>
+                                <span style="color:#aaa;">총금액 <strong>${totalAmt.toLocaleString()}원</strong></span>
+                                <span style="color:#666; font-size:0.68rem; margin-left:4px;">${timeStr}</span>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                listEl.innerHTML = html;
+            }
+        }
+    } catch (e) {
+        console.warn('Trade journal fetch error:', e);
+    }
+}
+
+async function resetPaperAccount() {
+    if (!confirm('가상계좌를 1,000만원으로 초기화하고 보유 포지션 및 DB 내역을 리셋하시겠습니까?')) return;
+    try {
+        const res = await fetch('/api/v1/account/reset-paper', { method: 'POST' });
+        const data = await res.json();
+        alert(data.message || '가상계좌가 성공적으로 초기화되었습니다.');
+        await Promise.all([fetchDashboardData(), fetchPortfolioPnl(), fetchTradeJournal()]);
+    } catch (e) {
+        alert('계좌 초기화 실패: ' + e);
+    }
+}
+
+async function triggerRebalance40Pct() {
+    if (!confirm('총자산의 40%를 초과하여 보유 중인 종목을 최대 40% 한도까지만 보유하도록 초과 수량을 즉시 매도하시겠습니까?')) {
+        return;
+    }
+    try {
+        const res = await fetch('/api/v1/account/rebalance-40pct', { method: 'POST' });
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+            let detailMsg = '⚖️ 40% 비중 리밸런싱 매도 완료:\n';
+            data.results.forEach(r => {
+                detailMsg += `• ${r.name}: ${r.sold_qty}주 매도 (@ ${r.sell_price.toLocaleString()}원) → 잔여 ${r.remaining_qty}주\n`;
+            });
+            alert(detailMsg);
+        } else {
+            alert(data.message || '현재 모든 종목이 40% 이하로 유지되고 있습니다.');
+        }
+        await Promise.all([fetchDashboardData(), fetchPortfolioPnl(), fetchTradeJournal()]);
+    } catch (e) {
+        alert('리밸런싱 요청 실패: ' + e);
+    }
+}
+
+
+// ==========================================
+// 매수 / 매도 근거 모달 팝업 컨트롤러 (Trade Reason Modal)
+// ==========================================
+function openTradeReasonModal(contentHtml) {
+    const modal = document.getElementById('trade-reason-modal');
+    const body = document.getElementById('trade-reason-modal-body');
+    if (!modal || !body) return;
+    body.innerHTML = contentHtml;
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeTradeReasonModal(event) {
+    if (event && event.target && !event.target.classList.contains('rec-modal-overlay') && !event.target.classList.contains('rec-modal-close-btn')) {
+        return;
+    }
+    const modal = document.getElementById('trade-reason-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+}
+
+// ESC 키로 모달 닫기 지원
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeTradeReasonModal();
+    }
+});
+
+// 보유 종목 매수 근거 팝업
+function showPositionReason(symbol, name, qty, buyPrice, currentPrice, pnl, pnlPct, buyReason, buyTime) {
+    const pnlSign = pnl > 0 ? '+' : '';
+    const pnlColor = pnl > 0 ? '#ff6b6b' : (pnl < 0 ? '#3498db' : '#d1d4dc');
+    const html = `
+        <div style="margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <span style="background: rgba(52, 152, 219, 0.2); color:#3498db; font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:4px; border:1px solid rgba(52, 152, 219, 0.4);">보유 포지션</span>
+                <h3 style="margin:6px 0 0 0; font-size:1.3rem; color:#fff; font-weight:800;">${name} <span style="font-size:0.85rem; color:#888; font-weight:normal;">(${symbol})</span></h3>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:1.1rem; font-weight:bold; color:${pnlColor};">${pnlSign}${Number(pnl).toLocaleString()}원</div>
+                <div style="font-size:0.8rem; font-weight:600; color:${pnlColor};">${pnlSign}${Number(pnlPct).toFixed(2)}%</div>
+            </div>
+        </div>
+        
+        <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.05); font-size:0.82rem;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                <span style="color:#888;">보유 수량</span>
+                <span style="font-weight:600; color:#eee;">${qty} 주</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                <span style="color:#888;">매수 단가</span>
+                <span style="font-weight:600; color:#eee;">${Number(buyPrice).toLocaleString()} 원</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                <span style="color:#888;">현재 단가</span>
+                <span style="font-weight:600; color:#eee;">${Number(currentPrice).toLocaleString()} 원</span>
+            </div>
+            ${buyTime ? `
+            <div style="display:flex; justify-content:space-between;">
+                <span style="color:#888;">매수 일시</span>
+                <span style="font-weight:600; color:#aaa;">${buyTime}</span>
+            </div>` : ''}
+        </div>
+
+        <div style="background: linear-gradient(145deg, rgba(52, 152, 219, 0.1), rgba(41, 128, 185, 0.05)); border: 1px solid rgba(52, 152, 219, 0.3); border-radius: 8px; padding: 14px 16px;">
+            <div style="font-size:0.85rem; font-weight:700; color:#3498db; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                <span>🎯</span> AI 실전 단타 매수 근거
+            </div>
+            <div style="font-size:0.85rem; line-height:1.6; color:#e0e0e0; background:rgba(0,0,0,0.25); padding:10px 12px; border-radius:6px; border-left: 3px solid #3498db;">
+                ${buyReason || '고수들의 실전 5대 단타 기법(시초가/돌파/눌림목/상따/스캘핑) 조건에 부합하여 진입하였습니다.'}
+            </div>
+        </div>
+
+        <div style="margin-top: 18px; text-align: center;">
+            <button onclick="closeTradeReasonModal()" style="background:#2c3e50; border:none; color:#fff; padding:8px 24px; border-radius:6px; font-weight:600; font-size:0.85rem; cursor:pointer;">확인</button>
+        </div>
+    `;
+    openTradeReasonModal(html);
+}
+
+// 청산 완료 거래 매수/매도 근거 팝업
+function showClosedTradeReason(symbol, name, qty, buyPrice, sellPrice, pnl, pnlPct, buyReason, sellReason, tradeTime) {
+    const pnlSign = pnl > 0 ? '+' : '';
+    const pnlColor = pnl > 0 ? '#ff6b6b' : (pnl < 0 ? '#3498db' : '#d1d4dc');
+    const html = `
+        <div style="margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <span style="background: rgba(46, 204, 113, 0.2); color:#2ecc71; font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:4px; border:1px solid rgba(46, 204, 113, 0.4);">청산 완료 (실현손익)</span>
+                <h3 style="margin:6px 0 0 0; font-size:1.3rem; color:#fff; font-weight:800;">${name} <span style="font-size:0.85rem; color:#888; font-weight:normal;">(${symbol})</span></h3>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:1.15rem; font-weight:bold; color:${pnlColor};">${pnlSign}${Number(pnl).toLocaleString()}원</div>
+                <div style="font-size:0.82rem; font-weight:600; color:${pnlColor};">${pnlSign}${Number(pnlPct).toFixed(2)}%</div>
+            </div>
+        </div>
+        
+        <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.05); font-size:0.82rem;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                <span style="color:#888;">거래 수량</span>
+                <span style="font-weight:600; color:#eee;">${qty} 주</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                <span style="color:#888;">매수 단가 → 매도 단가</span>
+                <span style="font-weight:600; color:#eee;">${Number(buyPrice).toLocaleString()}원 → ${Number(sellPrice).toLocaleString()}원</span>
+            </div>
+            ${tradeTime ? `
+            <div style="display:flex; justify-content:space-between;">
+                <span style="color:#888;">청산 일시</span>
+                <span style="font-weight:600; color:#aaa;">${tradeTime}</span>
+            </div>` : ''}
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:12px;">
+            <div style="background: linear-gradient(145deg, rgba(52, 152, 219, 0.1), rgba(41, 128, 185, 0.05)); border: 1px solid rgba(52, 152, 219, 0.3); border-radius: 8px; padding: 12px 14px;">
+                <div style="font-size:0.82rem; font-weight:700; color:#3498db; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <span>🔵</span> 진입(매수) 근거
+                </div>
+                <div style="font-size:0.82rem; line-height:1.5; color:#dcdcdc; background:rgba(0,0,0,0.25); padding:8px 10px; border-radius:5px; border-left: 3px solid #3498db;">
+                    ${buyReason || 'AI 단타 매수 조건 충족'}
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(145deg, rgba(231, 76, 60, 0.1), rgba(192, 57, 43, 0.05)); border: 1px solid rgba(231, 76, 60, 0.3); border-radius: 8px; padding: 12px 14px;">
+                <div style="font-size:0.82rem; font-weight:700; color:#ff6b6b; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <span>🔴</span> 청산(매도) 근거
+                </div>
+                <div style="font-size:0.82rem; line-height:1.5; color:#dcdcdc; background:rgba(0,0,0,0.25); padding:8px 10px; border-radius:5px; border-left: 3px solid #ff6b6b;">
+                    ${sellReason || '목표가/손절가/트레일링스탑 청산 조건 도달'}
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 18px; text-align: center;">
+            <button onclick="closeTradeReasonModal()" style="background:#2c3e50; border:none; color:#fff; padding:8px 24px; border-radius:6px; font-weight:600; font-size:0.85rem; cursor:pointer;">확인</button>
+        </div>
+    `;
+    openTradeReasonModal(html);
+}
+
+// 전역 window 객체에 명시적 바인딩 (인라인 onclick 보장)
+window.openTradeReasonModal = openTradeReasonModal;
+window.closeTradeReasonModal = closeTradeReasonModal;
+window.showPositionReason = showPositionReason;
+window.showClosedTradeReason = showClosedTradeReason;
+window.triggerRebalance40Pct = triggerRebalance40Pct;
+
+
+// ==========================================
+// 전체 거래일지 대형 팝업 모달 (All Trades Full Modal)
+// ==========================================
+async function openAllTradesModal() {
+    const modal = document.getElementById('all-trades-modal');
+    const summaryBar = document.getElementById('all-trades-summary-bar');
+    const listContainer = document.getElementById('all-trades-full-list');
+    if (!modal || !summaryBar || !listContainer) return;
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    summaryBar.innerHTML = '<div style="grid-column: 1 / -1; color:#888; padding:8px;">성과 데이터 집계 중...</div>';
+    listContainer.innerHTML = '<div style="text-align:center; padding:30px; color:#2ecc71;">💾 전체 거래일지 로딩 중...</div>';
+
+    try {
+        const [sumRes, hisRes] = await Promise.all([
+            fetch('/api/v1/trades/summary'),
+            fetch('/api/v1/trades/history?limit=100')
+        ]);
+        const summary = await sumRes.json();
+        const history = await hisRes.json();
+
+        // 1. 상단 요약 바 렌더링
+        const pnl = summary.total_realized_pnl || 0;
+        const pnlSign = pnl > 0 ? '+' : '';
+        const pnlColor = pnl > 0 ? '#ff6b6b' : (pnl < 0 ? '#3498db' : '#d1d4dc');
+        const wr = summary.win_rate || 0.0;
+        const wrColor = wr >= 50 ? '#2ecc71' : (wr > 0 ? '#e67e22' : '#888');
+
+        summaryBar.innerHTML = `
+            <div style="background:rgba(0,0,0,0.3); padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+                <div style="font-size:0.7rem; color:#888;">총 실현손익</div>
+                <div style="font-size:1rem; font-weight:800; color:${pnlColor};">${pnlSign}${pnl.toLocaleString()} 원</div>
+            </div>
+            <div style="background:rgba(0,0,0,0.3); padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+                <div style="font-size:0.7rem; color:#888;">승률</div>
+                <div style="font-size:1rem; font-weight:800; color:${wrColor};">${wr.toFixed(1)}%</div>
+            </div>
+            <div style="background:rgba(0,0,0,0.3); padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+                <div style="font-size:0.7rem; color:#888;">총 거래횟수</div>
+                <div style="font-size:1rem; font-weight:800; color:#fff;">${summary.total_trades || 0} 건</div>
+            </div>
+            <div style="background:rgba(0,0,0,0.3); padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+                <div style="font-size:0.7rem; color:#888;">승 / 패</div>
+                <div style="font-size:0.95rem; font-weight:700; color:#aaa;">${summary.win_trades || 0}승 ${summary.loss_trades || 0}패</div>
+            </div>
+        `;
+
+        // 2. 전체 거래 리스트 렌더링
+        const trades = history.closed_trades || [];
+        if (trades.length === 0) {
+            listContainer.innerHTML = '<div style="text-align:center; padding:40px; color:#888;">기록된 청산 매매 내역이 없습니다.</div>';
+            return;
+        }
+
+        let html = '';
+        trades.forEach(t => {
+            const trPnl = t.realized_pnl != null ? t.realized_pnl : 0;
+            const trPnlPct = t.pnl_pct != null ? t.pnl_pct : (t.realized_pnl_pct != null ? t.realized_pnl_pct : 0);
+            const trSign = trPnl > 0 ? '+' : '';
+            const trColor = trPnl > 0 ? '#ff6b6b' : (trPnl < 0 ? '#3498db' : '#d1d4dc');
+            
+            const reason = t.exit_reason || 'MANUAL';
+            const reasonBadge = reason === 'TAKE_PROFIT' ? '<span style="color:#ff6b6b; font-size:0.72rem; border:1px solid rgba(255,107,107,0.3); border-radius:3px; padding:1px 6px;">목표익절</span>'
+                : reason === 'TRAILING_STOP' ? '<span style="color:#f39c12; font-size:0.72rem; border:1px solid rgba(243,156,18,0.3); border-radius:3px; padding:1px 6px;">트레일링스탑</span>'
+                : reason === 'STOP_LOSS' ? '<span style="color:#3498db; font-size:0.72rem; border:1px solid rgba(52,152,219,0.3); border-radius:3px; padding:1px 6px;">기계적손절</span>'
+                : reason === 'REBALANCE_40PCT' ? '<span style="color:#e67e22; font-size:0.72rem; border:1px solid rgba(230,126,34,0.4); border-radius:3px; padding:1px 6px;">40%비중리밸런싱</span>'
+                : '<span style="color:#aaa; font-size:0.72rem; border:1px solid rgba(255,255,255,0.2); border-radius:3px; padding:1px 6px;">수동청산</span>';
+
+            const buyP = t.buy_price || 0;
+            const sellP = t.sell_price || 0;
+            const totalAmt = t.revenue_amt != null ? t.revenue_amt : (sellP * t.qty);
+            const resolvedName = (t.name && t.name !== t.symbol) ? t.name : (STOCK_NAME_MAP[t.symbol] || t.symbol);
+
+            const bReasonSafe = (t.buy_reason || 'AI 단타 매수 체결').replace(/'/g, "\\'");
+            const sReasonSafe = (t.sell_reason || reason).replace(/'/g, "\\'");
+            const nameSafe = resolvedName.replace(/'/g, "\'");
+            const timeRaw = t.sell_time || t.exit_time || '';
+
+            html += `
+                <div style="background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:12px 16px; margin-bottom:8px; transition:border-color 0.2s ease;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <strong style="font-size:1.05rem; color:#fff; font-weight:800;">${resolvedName}</strong>
+                            <span style="font-size:0.75rem; color:#888;">${t.symbol}</span>
+                            ${reasonBadge}
+                            <button onclick="showClosedTradeReason('${t.symbol}', '${nameSafe}', ${t.qty}, ${buyP}, ${sellP}, ${trPnl}, ${trPnlPct}, '${bReasonSafe}', '${sReasonSafe}', '${timeRaw}')" style="background:rgba(46, 204, 113, 0.15); border:1px solid rgba(46, 204, 113, 0.4); color:#2ecc71; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:4px; cursor:pointer;" title="상세 매수 및 매도 근거 팝업 보기">근거</button>
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="font-size:1.05rem; font-weight:800; color:${trColor};">${trSign}${trPnl.toLocaleString()} 원</span>
+                            <span style="font-size:0.85rem; font-weight:700; color:${trColor}; margin-left:6px;">(${trSign}${Number(trPnlPct).toFixed(2)}%)</span>
+                        </div>
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns: 2fr 1fr 1.5fr; gap:10px; font-size:0.8rem; color:#aaa; background:rgba(0,0,0,0.25); padding:8px 12px; border-radius:6px;">
+                        <div>
+                            <span style="color:#777;">체결단가: </span>
+                            <span>매수 <strong>${buyP.toLocaleString()}원</strong> → 매도 <strong>${sellP.toLocaleString()}원</strong></span>
+                        </div>
+                        <div>
+                            <span style="color:#777;">체결수량: </span>
+                            <strong style="color:#eee;">${t.qty} 주</strong>
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="color:#777;">총 체결금액: </span>
+                            <strong style="color:#2ecc71;">${totalAmt.toLocaleString()} 원</strong>
+                            <span style="color:#666; font-size:0.72rem; margin-left:6px;">(${timeRaw})</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        listContainer.innerHTML = html;
+
+    } catch (e) {
+        listContainer.innerHTML = `<div style="text-align:center; padding:30px; color:#e74c3c;">데이터 로딩 실패: ${e}</div>`;
+    }
+}
+
+function closeAllTradesModal(event) {
+    if (event && event.target && !event.target.classList.contains('rec-modal-overlay') && !event.target.classList.contains('rec-modal-close-btn')) {
+        return;
+    }
+    const modal = document.getElementById('all-trades-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+}
+
+// ESC 키로 대형 모달 닫기
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeAllTradesModal();
+    }
+});
+
+// 전역 바인딩
+window.openAllTradesModal = openAllTradesModal;
+window.closeAllTradesModal = closeAllTradesModal;

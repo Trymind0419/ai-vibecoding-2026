@@ -18,10 +18,11 @@ class NamuhAutoTrader:
         self.account_type: Optional[str] = None
         self.all_accounts: List[Dict[str, str]] = []
         
-        # 가상(Paper) 투자 시뮬레이션용 데이터
-        self.paper_capital: int = 10000000
-        self.paper_positions: Dict[str, Dict[str, Any]] = {}
-        self.order_history: List[Dict[str, Any]] = []
+        # 가상(Paper) 투자 시뮬레이션용 데이터 (DB 영구 보존 및 자동 복구)
+        from auto_trader.database import db
+        self.paper_capital: int = db.get_paper_capital(default=10000000)
+        self.paper_positions: Dict[str, Dict[str, Any]] = db.get_positions()
+        self.order_history: List[Dict[str, Any]] = db.get_recent_orders(limit=30)
 
         # 환경변수 초기화
         app_key = settings.NHPLUG_APP_KEY
@@ -244,6 +245,80 @@ class NamuhAutoTrader:
         tot = detail.get("total_assets", 0)
         return tot if tot > 0 else cash
 
+    def get_total_assets(self) -> int:
+        """총 평가 자산 (현금 + 주식 평가금액) 반환"""
+        detail = self.get_account_detail()
+        tot = detail.get("total_assets", 0)
+        if tot > 0:
+            return tot
+        cash = detail.get("cash", 0)
+        return cash
+
+    def rebalance_excess_positions(self, max_ratio: float = 0.40) -> list:
+        """
+        단일 종목이 총자산의 max_ratio(기본 40%)를 초과할 경우,
+        40% 한도까지만 보유하도록 초과 수량을 자동 매도 리밸런싱
+        :return: 매도 처리된 결과 리스트 [{"symbol": ..., "name": ..., "sold_qty": ..., "sell_price": ..., "msg": ...}]
+        """
+        total_assets = self.get_total_assets()
+        if total_assets <= 0:
+            return []
+
+        max_allowed_amt = total_assets * max_ratio
+        positions = self.get_positions()
+        results = []
+
+        for sym, pos in list(positions.items()):
+            held_qty = pos.get("qty", 0)
+            if held_qty <= 0:
+                continue
+
+            price = int(pos.get("current_price") or pos.get("buy_price") or 0)
+            if price <= 0:
+                continue
+
+            cur_eval = held_qty * price
+            if cur_eval > max_allowed_amt:
+                excess_amt = cur_eval - max_allowed_amt
+                excess_qty = int(excess_amt // price)
+                # 만약 단가 차이로 올림 조정이 필요하면 1주 추가 매도하여 엄격히 40% 이하 유지
+                if (held_qty - excess_qty) * price > max_allowed_amt:
+                    excess_qty += 1
+
+                excess_qty = min(held_qty, max(1, excess_qty))
+                stock_name = pos.get("name") or sym
+
+                exit_reason = "REBALANCE_40PCT"
+                sell_reason = (
+                    f"비중 리밸런싱: 단일종목 평가액({cur_eval:,}원, {(cur_eval/total_assets)*100:.1f}%)이 "
+                    f"총자산({total_assets:,}원)의 40% 한도({int(max_allowed_amt):,}원)를 초과하여 "
+                    f"{excess_qty}주 초과분 매도"
+                )
+
+                logger.warning(f"[REBALANCE] {stock_name}({sym}) {sell_reason}")
+                ok, ord_id, msg = self.order_sell(
+                    symbol=sym,
+                    price=price,
+                    qty=excess_qty,
+                    order_type="LIMIT",
+                    exit_reason=exit_reason,
+                    sell_reason=sell_reason
+                )
+
+                results.append({
+                    "symbol": sym,
+                    "name": stock_name,
+                    "sold_qty": excess_qty,
+                    "remaining_qty": held_qty - excess_qty,
+                    "sell_price": price,
+                    "success": ok,
+                    "order_id": ord_id,
+                    "message": msg,
+                    "sell_reason": sell_reason
+                })
+
+        return results
+
     def get_positions(self) -> Dict[str, Dict[str, Any]]:
         """보유 종목 현황 조회"""
         if not self.use_real_api or settings.TRADING_MODE.upper() == "PAPER":
@@ -293,13 +368,37 @@ class NamuhAutoTrader:
             logger.error(f"[NHPLUG] 보유 종목 조회 실패: {e}")
             return {}
 
-    def order_buy(self, symbol: str, price: int, qty: int, order_type: str = "LIMIT") -> Tuple[bool, str, str]:
+    def order_buy(self, symbol: str, price: int, qty: int, order_type: str = "LIMIT", buy_reason: str = "") -> Tuple[bool, str, str]:
         """
-        주식 매수 주문 실행
+        주식 매수 주문 실행 (단일 종목 총자산 40% 비중 상한 검증 포함)
         :return: (성공여부, 주문번호/코드, 처리결과메시지)
         """
         if qty <= 0:
             return False, "INVALID_QTY", "주문 수량은 1주 이상이어야 합니다."
+
+        # === 단일 종목 총자산 40% 비중 상한 리스크 검증 ===
+        try:
+            total_assets = self.get_total_assets()
+            if total_assets > 0:
+                max_allowed_amt = total_assets * 0.40  # 총 금액의 40% 한도
+                # 기존 보유 금액 확인
+                positions = self.get_positions()
+                cur_held_qty = positions.get(symbol, {}).get("qty", 0) if isinstance(positions, dict) else 0
+                cur_held_amt = cur_held_qty * price
+                new_order_amt = price * qty
+                total_projected_amt = cur_held_amt + new_order_amt
+
+                if total_projected_amt > max_allowed_amt:
+                    rem_allowed_amt = max_allowed_amt - cur_held_amt
+                    max_allowed_qty = max(0, int(rem_allowed_amt // price)) if price > 0 else 0
+                    msg = (
+                        f"비중 한도 초과: 단일 종목은 총자산({total_assets:,}원)의 40%({int(max_allowed_amt):,}원)를 넘을 수 없습니다. "
+                        f"(주문시도: {new_order_amt:,}원 / 최대 가능수량: {max_allowed_qty}주)"
+                    )
+                    logger.warning(f"[RISK CONTROL] {symbol} {msg}")
+                    return False, "RISK_LIMIT_EXCEEDED", msg
+        except Exception as e:
+            logger.warning(f"[RISK CONTROL] 40% 비중 검증 중 예외 (주문 진행 허용): {e}")
 
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -397,26 +496,43 @@ class NamuhAutoTrader:
             if self.paper_capital < cost:
                 return False, "INSUFFICIENT_FUNDS", f"가상 계좌 잔고 부족 (필요: {cost:,}원 / 보유: {self.paper_capital:,}원)"
 
+            from auto_trader.database import db
             self.paper_capital -= cost
-            current_held = self.paper_positions.get(symbol, {}).get("qty", 0)
+            db.save_paper_capital(self.paper_capital)
+
+            pos = self.paper_positions.get(symbol, {})
+            current_held = pos.get("qty", 0)
+            prev_buy_price = pos.get("buy_price", price)
+            total_qty = current_held + qty
+            avg_buy_price = round(((prev_buy_price * current_held) + (price * qty)) / total_qty, 2) if total_qty > 0 else price
+            stock_name = pos.get("name") or symbol
+
             self.paper_positions[symbol] = {
                 "symbol": symbol,
-                "name": symbol,
-                "qty": current_held + qty,
-                "buy_price": price,
+                "name": stock_name,
+                "qty": total_qty,
+                "buy_price": avg_buy_price,
                 "current_price": price,
-                "eval_amt": price * (current_held + qty)
+                "highest_price": price,
+                "buy_time": now_str,
+                "buy_reason": buy_reason or pos.get("buy_reason", ""),
+                "eval_amt": int(price * total_qty),
+                "profit_rate": 0.0
             }
-            order_no = f"SIM_{datetime.datetime.now().strftime('%H%M%S')}"
-            msg = f"⚪ [가상 매수 체결] {symbol} {qty}주 체결 완료 (가상잔고: {self.paper_capital:,}원)"
+            db.save_position(symbol, stock_name, total_qty, avg_buy_price, price, price, now_str, buy_reason=buy_reason or pos.get("buy_reason", ""))
+
+            order_no = f"SIM_B_{datetime.datetime.now().strftime('%H%M%S')}"
+            msg = f"⚪ [가상 매수 체결] {stock_name}({symbol}) {qty}주 체결 완료 (단가: {price:,}원 / 잔고: {self.paper_capital:,}원)"
             
-            self.order_history.insert(0, {
-                "time": now_str, "type": "BUY", "mode": "PAPER", "symbol": symbol,
+            order_record = {
+                "time": now_str, "type": "BUY", "mode": "PAPER", "symbol": symbol, "name": stock_name,
                 "price": price, "qty": qty, "order_no": order_no, "status": "SUCCESS", "msg": msg
-            })
+            }
+            self.order_history.insert(0, order_record)
+            db.record_order(order_record)
             return True, order_no, msg
 
-    def order_sell(self, symbol: str, price: int, qty: int, order_type: str = "LIMIT") -> Tuple[bool, str, str]:
+    def order_sell(self, symbol: str, price: int, qty: int, order_type: str = "LIMIT", exit_reason: str = "MANUAL", sell_reason: str = "") -> Tuple[bool, str, str]:
         """
         주식 매도 주문 실행
         :return: (성공여부, 주문번호/코드, 처리결과메시지)
@@ -511,24 +627,65 @@ class NamuhAutoTrader:
 
         # 3. PAPER (가상 매도)
         else:
-            held = self.paper_positions.get(symbol, {}).get("qty", 0)
+            pos = self.paper_positions.get(symbol, {})
+            held = pos.get("qty", 0)
             if held < qty:
                 return False, "INSUFFICIENT_QTY", f"보유 수량 부족 (보유: {held}주 / 요청: {qty}주)"
 
+            from auto_trader.database import db
             revenue = price * qty
             self.paper_capital += revenue
+            db.save_paper_capital(self.paper_capital)
+
+            stock_name = pos.get("name") or symbol
+            buy_price = pos.get("buy_price", price)
+            buy_time = pos.get("buy_time", "")
+
+            # 실현 손익 청산 거래일지 DB 기록 (매수근거, 매도근거 보존)
+            db.record_closed_trade(
+                symbol=symbol,
+                name=stock_name,
+                buy_time=buy_time,
+                sell_time=now_str,
+                buy_price=buy_price,
+                sell_price=price,
+                qty=qty,
+                exit_reason=exit_reason,
+                buy_reason=pos.get("buy_reason", ""),
+                sell_reason=sell_reason or exit_reason
+            )
+
+            profit = int((price - buy_price) * qty)
+            profit_rate = round(((price - buy_price) / buy_price * 100), 2) if buy_price > 0 else 0.0
+            pnl_sign = "+" if profit > 0 else ""
+
             if held == qty:
-                del self.paper_positions[symbol]
+                if symbol in self.paper_positions:
+                    del self.paper_positions[symbol]
+                db.delete_position(symbol)
             else:
-                self.paper_positions[symbol]["qty"] -= qty
-                self.paper_positions[symbol]["eval_amt"] = self.paper_positions[symbol]["qty"] * price
+                remaining_qty = held - qty
+                self.paper_positions[symbol]["qty"] = remaining_qty
+                self.paper_positions[symbol]["eval_amt"] = int(price * remaining_qty)
+                db.save_position(
+                    symbol=symbol,
+                    name=stock_name,
+                    qty=remaining_qty,
+                    buy_price=buy_price,
+                    current_price=price,
+                    highest_price=pos.get("highest_price", price),
+                    buy_time=buy_time
+                )
 
             order_no = f"SIM_S_{datetime.datetime.now().strftime('%H%M%S')}"
-            msg = f"⚪ [가상 매도 체결] {symbol} {qty}주 체결 완료 (가상잔고: {self.paper_capital:,}원)"
-            self.order_history.insert(0, {
-                "time": now_str, "type": "SELL", "mode": "PAPER", "symbol": symbol,
+            msg = f"⚪ [가상 매도 체결] {stock_name}({symbol}) {qty}주 체결 완료 (실현손익: {pnl_sign}{profit:,}원 / {pnl_sign}{profit_rate}%)"
+            
+            order_record = {
+                "time": now_str, "type": "SELL", "mode": "PAPER", "symbol": symbol, "name": stock_name,
                 "price": price, "qty": qty, "order_no": order_no, "status": "SUCCESS", "msg": msg
-            })
+            }
+            self.order_history.insert(0, order_record)
+            db.record_order(order_record)
             return True, order_no, msg
 
     def buy_market(self, symbol: str, qty: int) -> Tuple[bool, str]:

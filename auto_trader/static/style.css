@@ -1386,3 +1386,19 @@ body.light-theme .modal-close-btn-bottom:hover {
 }
 
 
+
+/* 매매 거래일지 전용 스무스 스크롤바 */
+#closed-trades-list::-webkit-scrollbar {
+    width: 6px;
+}
+#closed-trades-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+#closed-trades-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+#closed-trades-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(46, 204, 113, 0.5);
+}

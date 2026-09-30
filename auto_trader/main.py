@@ -232,7 +232,9 @@ async def get_portfolio_pnl():
             "buy_amt": buy_amt,
             "eval_amt": eval_amt,
             "pnl": pnl,
-            "pnl_pct": pnl_pct
+            "pnl_pct": pnl_pct,
+            "buy_time": pos.get("buy_time", ""),
+            "buy_reason": pos.get("buy_reason", "") or "알고리즘 분석 진입 (변동성/모멘텀)"
         })
 
     total_pnl = total_eval_amt - total_buy_amt
@@ -434,6 +436,27 @@ async def create_sell_order(order: OrderRequest):
         }
     raise HTTPException(status_code=400, detail=message)
 
+@app.post("/api/v1/account/rebalance-40pct", tags=["Account"])
+async def trigger_rebalance_40pct():
+    """
+    단일 종목 총자산 40% 초과 보유 시 40% 한도까지만 보유하도록 초과분 즉각 매도 리밸런싱
+    """
+    results = await asyncio.to_thread(bot.trader.rebalance_excess_positions, 0.40)
+    for r in results:
+        if r.get("success"):
+            bot.add_log("REBALANCE_SUCCESS",
+                f"⚖️ [비중 40% 리밸런싱 매도] {r['name']}({r['symbol']}) {r['sold_qty']}주 매도 "
+                f"(@ {r['sell_price']:,}원) → 잔여 {r['remaining_qty']}주 (40% 상한 유지)")
+        else:
+            bot.add_log("REBALANCE_FAILED", f"⚠️ {r['name']} 40% 리밸런싱 매도 실패: {r.get('message')}")
+            
+    return {
+        "status": "success",
+        "count": len(results),
+        "results": results,
+        "message": f"{len(results)}건의 포지션에 대해 40% 비중 상한 리밸런싱 매도가 수행되었습니다." if results else "모든 종목이 총자산 40% 이하로 안전하게 유지 중입니다."
+    }
+
 @app.put("/api/v1/orders/{order_id}", tags=["Orders"])
 def modify_order(
     order_id: str = Path(..., description="수정할 주문의 고유 ID"),
@@ -623,4 +646,40 @@ def get_strategy_status():
         },
         "current_budget": bot.budget,
         "is_running": bot.is_running,
+    }
+
+
+# ==========================================
+# 6. 영구 거래일지 및 누적 통계 (Trade Journal & DB) API
+# ==========================================
+@app.get("/api/v1/trades/history", tags=["Trades"])
+def get_trades_history(limit: int = Query(50, description="조회할 거래일지 건수")):
+    """DB에 영구 저장된 청산 완료 거래일지 및 체결 이력 조회"""
+    from auto_trader.database import db
+    closed_trades = db.get_closed_trades(limit=limit)
+    orders = db.get_recent_orders(limit=limit)
+    return {
+        "closed_trades": closed_trades,
+        "orders": orders
+    }
+
+@app.get("/api/v1/trades/summary", tags=["Trades"])
+def get_trades_summary():
+    """누적 실현손익, 승률, 총 거래횟수 등 DB 기반 트레이딩 종합 성과 요약"""
+    from auto_trader.database import db
+    return db.get_trade_summary()
+
+@app.post("/api/v1/account/reset-paper", tags=["Account"])
+def reset_paper_account():
+    """가상계좌 1,000만원 원금 복원 및 보유 포지션 초기화 (DB 동기화)"""
+    from auto_trader.database import db
+    db.reset_paper_account(initial_capital=10000000)
+    bot.trader.paper_capital = 10000000
+    bot.trader.paper_positions = {}
+    bot.add_log("SYSTEM", "🔄 가상계좌 원금 10,000,000원 리셋 및 보유 포지션 초기화 완료")
+    return {
+        "status": "success",
+        "message": "가상계좌가 1,000만원으로 초기화되었습니다.",
+        "balance": 10000000,
+        "cash": 10000000
     }
