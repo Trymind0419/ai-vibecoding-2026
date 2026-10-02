@@ -17,13 +17,15 @@
 import datetime
 from typing import Tuple, Optional, Dict, Any
 
+from auto_trader.config import settings
+
 
 # ============================================================
 # 5대 단타 전략 기본 설정 (MASTER STRATEGY CONFIG)
 # ============================================================
 MASTER_STRATEGY_CONFIG = {
     # 포지션 및 예산
-    "max_positions":        3,      # 최대 동시 보유 종목 수
+    "max_positions":        getattr(settings, "MAX_POSITIONS", 7),      # 최대 동시 보유 종목 수 (기존 3개 -> 최대 7개 제한 해제)
     "budget_alloc_pct":     1.0,    # 예산 대비 1종목 투입 비율 (1.0 = 100%)
     "max_stock_ratio_pct":  0.40,   # 단일 종목 총자산 대비 최대 비중 (40% 상한 제한)
     "scan_interval_sec":    2,      # 감시 주기 (초)
@@ -53,7 +55,8 @@ class MasterDayTradingStrategy:
 
     def __init__(self, config: dict = None):
         cfg = config or MASTER_STRATEGY_CONFIG
-        self.max_positions      = cfg.get("max_positions", 3)
+        default_max_pos = getattr(settings, "MAX_POSITIONS", 7)
+        self.max_positions      = cfg.get("max_positions", default_max_pos)
         self.budget_alloc_pct   = cfg.get("budget_alloc_pct", 1.0)
         self.max_stock_ratio    = cfg.get("max_stock_ratio_pct", 0.40)
         self.scan_interval_sec  = cfg.get("scan_interval_sec", 2)

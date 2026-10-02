@@ -42,6 +42,7 @@ class OrderModifyRequest(BaseModel):
 class BotSettingsUpdateRequest(BaseModel):
     breakout_k: Optional[float] = None
     max_loss_pct: Optional[float] = None
+    max_positions: Optional[int] = None
 
 # ==========================================
 # 봇 라이프사이클 이벤트
@@ -620,10 +621,13 @@ def update_bot_settings(settings: BotSettingsUpdateRequest):
     """실행 중인 봇의 전략 설정값 실시간 변경 (PUT)"""
     if settings.breakout_k is not None:
         bot.strategy.k = settings.breakout_k
+    if settings.max_positions is not None and settings.max_positions > 0:
+        bot.strategy.max_positions = settings.max_positions
     return {
         "message": "봇 설정이 업데이트되었습니다.",
         "strategy": bot.strategy.describe(),
-        "current_k": bot.strategy.k
+        "current_k": bot.strategy.k,
+        "max_positions": bot.strategy.max_positions
     }
 
 @app.get("/api/v1/bot/strategy-status", tags=["Bot Control"])

@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     # 2. 봇(Bot) 매매 로직 설정
     TARGET_SYMBOLS: str = "005930,000660"
+    MAX_POSITIONS: int = 7                    # 최대 동시 보유 종목 수 (기본 7개)
     BREAKOUT_K: float = 0.5
     MAX_LOSS_PCT: float = 0.02
     PORT: int = 8008
